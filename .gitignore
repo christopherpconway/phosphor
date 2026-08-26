@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# git worktrees (superpowers)
+.worktrees/
+dist-builds/
+
+# internal working material - never ships in the public tree
+tasks/
+errors-log.md
+docs/superpowers/
+docs/plans/
+docs/specs/
+docs/qa/
+docs/screenshots/*
+!docs/screenshots/hero-retro-amber.png
+!docs/screenshots/hero-nextgen-tron.png

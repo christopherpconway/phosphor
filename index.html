@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phosphor</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <div id="cockpit">
+      <header id="ck-top" class="ck-row"></header>
+      <aside id="ck-left" class="ck-col"></aside>
+      <div id="ck-center">
+        <div id="ck-tabs" class="ck-row"></div>
+        <div id="bezel">
+          <div id="terminal"></div>
+          <canvas id="crt"></canvas>
+          <div id="capture"></div>
+        </div>
+      </div>
+      <aside id="ck-right" class="ck-col"></aside>
+      <footer id="ck-bottom" class="ck-row"></footer>
+    </div>
+    <div id="panemenu" class="popover hidden"></div>
+    <div id="tabmenu" class="popover hidden"></div>
+    <div id="presetmenu" class="popover hidden"></div>
+  </body>
+</html>

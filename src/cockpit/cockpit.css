@@ -1,0 +1,426 @@
+/* src/cockpit/cockpit.css
+   Grid shell. CRT mode collapses to a single cell so today's look is untouched. */
+
+:root {
+  /* Palette variables are set from the active colour scheme at runtime;
+     only the family is static. */
+  --ck-font: "IBM 3270", monospace;
+}
+
+#cockpit {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 0 1fr 0;
+  grid-template-rows: 0 1fr 0;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "left center right"
+    "bottom bottom bottom";
+}
+#ck-top { grid-area: topbar; }
+#ck-left { grid-area: left; }
+/* The tabs strip lives inside the centre cell so it tracks the terminal's
+   width, not the window's. */
+#ck-center { grid-area: center; display: flex; flex-direction: column; min-height: 0; }
+#bezel { position: relative; flex: 1; min-height: 0; }
+#ck-right { grid-area: right; }
+#ck-bottom { grid-area: bottom; }
+
+body[data-mode="crt"] .ck-col,
+body[data-mode="crt"] #ck-bottom,
+body[data-mode="crt"] #ck-tabs,
+body[data-mode="crt"] #ck-top { display: none; }
+
+body[data-mode="cockpit"] #cockpit {
+  grid-template-columns: minmax(220px, 18vw) 1fr minmax(220px, 18vw);
+  grid-template-rows: minmax(0, auto) 1fr minmax(0, auto);
+  background: var(--ck-bg, #05080d);
+}
+.ck-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+}
+.ck-draghandle {
+  cursor: grab;
+  user-select: none;
+  /* pointer-based drag pans nothing; keep the gesture for ourselves */
+  touch-action: none;
+}
+.ck-dragging { opacity: 0.45; }
+.ck-dropmark {
+  background: var(--ck-accent, #0af);
+  min-height: 2px;
+  min-width: 2px;
+  align-self: stretch;
+}
+.ck-row { display: flex; gap: 8px; padding: 4px 8px; overflow: hidden; }
+/* An unpopulated zone must not reserve a band of background. */
+.ck-row:empty, .ck-col:empty { display: none; }
+
+/* A hidden column must also surrender its track, or the terminal keeps a
+   dead band where the sidebar used to be. This is what makes a left-only or
+   right-only cockpit possible. */
+body[data-mode="cockpit"] #cockpit:not(:has(#ck-left:not(:empty))) {
+  grid-template-columns: 0 1fr minmax(220px, 18vw);
+}
+body[data-mode="cockpit"] #cockpit:not(:has(#ck-right:not(:empty))) {
+  grid-template-columns: minmax(220px, 18vw) 1fr 0;
+}
+body[data-mode="cockpit"] #cockpit:not(:has(#ck-left:not(:empty))):not(:has(#ck-right:not(:empty))) {
+  grid-template-columns: 0 1fr 0;
+}
+
+/* Explicit sidebar choice collapses the track outright. */
+body[data-mode="cockpit"] #cockpit[data-sidebars="left"] { grid-template-columns: minmax(220px, 18vw) 1fr 0; }
+body[data-mode="cockpit"] #cockpit[data-sidebars="right"] { grid-template-columns: 0 1fr minmax(220px, 18vw); }
+body[data-mode="cockpit"] #cockpit[data-sidebars="none"] { grid-template-columns: 0 1fr 0; }
+
+/* Narrow window: side columns become overlays, terminal wins the space. */
+@media (max-width: 1100px) {
+  body[data-mode="cockpit"] #cockpit {
+    grid-template-columns: 0 1fr 0;
+  }
+  body[data-mode="cockpit"] .ck-col {
+    position: fixed;
+    top: 0;
+    bottom: 34px;
+    width: 260px;
+    z-index: 30;
+    background: var(--ck-bg, #05080d);
+    transform: translateX(-100%);
+    transition: transform 120ms ease-out;
+  }
+  body[data-mode="cockpit"] #ck-right { right: 0; transform: translateX(100%); }
+  body[data-mode="cockpit"] #ck-left { left: 0; }
+  body[data-mode="cockpit"] .ck-col.open { transform: translateX(0); }
+}
+
+.ck-panel {
+  position: relative;
+  border: 1px solid var(--ck-border, #123);
+  background: var(--ck-panel-bg, rgba(10, 20, 30, 0.6));
+  color: var(--ck-fg, #9cf);
+  font: var(--ck-size, 11px) var(--ck-font, monospace);
+  flex: 0 0 auto;
+  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+.ck-panel header {
+  padding: 3px 8px;
+  letter-spacing: 2px;
+  border-bottom: 1px solid var(--ck-border, #123);
+  color: var(--ck-accent, #0af);
+}
+.ck-body { padding: 6px 8px; }
+.ck-body.dim { opacity: 0.3; }
+.ck-stale {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 4px;
+  color: var(--ck-warn, #f80);
+}
+.ck-stale.hidden { display: none; }
+.ck-spark { width: 100%; display: block; margin-top: 4px; }
+.ck-line { margin-top: 4px; white-space: nowrap; }
+.ck-procs { width: 100%; margin-top: 4px; border-collapse: collapse; }
+.ck-procs td { padding: 1px 4px 1px 0; white-space: nowrap; overflow: hidden; }
+.ck-globe { width: 100%; display: block; }
+.ck-path { overflow: hidden; text-overflow: ellipsis; direction: rtl; }
+.ck-files { list-style: none; margin: 4px 0 0; padding: 0; max-height: 200px; overflow-y: auto; outline: none; }
+.ck-files li { padding: 1px 4px; white-space: nowrap; cursor: pointer; }
+.ck-files li.sel, .ck-files li:hover { background: var(--ck-border, #123); }
+
+.ck-clockstrip {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 2px 16px;
+  height: 100%;
+  color: var(--ck-accent, #0af);
+  font: var(--ck-bar-size, 12px) var(--ck-font, monospace);
+  letter-spacing: 2px;
+  border-top: 1px solid var(--ck-border, #123);
+}
+.ck-brand { letter-spacing: 4px; font-weight: bold; }
+
+/* Cockpit palette is set from the active colour scheme by refreshVisual, so
+   the cockpit always matches the terminal. The old data-ck-theme packs are
+   gone with the theme axis. */
+#ck-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--ck-bg, #05080d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#ck-boot pre {
+  color: var(--ck-accent, #0af);
+  font: 14px var(--ck-font, monospace);
+  letter-spacing: 2px;
+  min-width: 40ch;
+  min-height: 12em;
+}
+
+#ck-shortcuts {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: color-mix(in srgb, var(--ck-bg, #05080d) 92%, transparent);
+  color: var(--ck-fg, var(--tint, #9cf));
+  font: 13px var(--ck-font, monospace);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#ck-shortcuts.hidden { display: none; }
+#ck-shortcuts .panel {
+  min-width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border: 1px solid var(--ck-border, var(--tint, #123));
+  padding: 16px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+  align-content: start;
+  clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+#ck-shortcuts h1, #ck-shortcuts .hint { grid-column: 1 / -1; }
+#ck-shortcuts h1, #ck-shortcuts h2 { letter-spacing: 3px; color: var(--ck-accent, var(--tint, #0af)); }
+#ck-shortcuts .group { break-inside: avoid; min-width: 0; }
+#ck-shortcuts .row { display: grid; grid-template-columns: 1fr max-content; gap: 16px; padding: 2px 6px; }
+#ck-shortcuts .chord { color: var(--ck-accent, #0af); white-space: nowrap; }
+#ck-shortcuts .hint { margin-top: 12px; opacity: 0.7; letter-spacing: 2px; }
+
+#ck-config {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: color-mix(in srgb, var(--ck-bg, #05080d) 92%, transparent);
+  color: var(--ck-fg, var(--tint, #9cf));
+  font: 13px var(--ck-font, monospace);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#ck-config.hidden { display: none; }
+#ck-config .panel {
+  min-width: 820px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border: 1px solid var(--ck-border, var(--tint, #123));
+  padding: 16px 24px;
+  clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+#ck-config h1, #ck-config h2 { letter-spacing: 3px; color: var(--ck-accent, var(--tint, #0af)); }
+
+/* Two columns of whole sections. A section never splits across the gap, so
+   the eye follows one group at a time. */
+#ck-config .panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+  align-content: start;
+}
+#ck-config h1, #ck-config .hint { grid-column: 1 / -1; }
+#ck-config .group { break-inside: avoid; min-width: 0; }
+
+/* Label and value adjacent, not pushed to opposite edges. */
+#ck-config .row {
+  display: grid;
+  grid-template-columns: 17ch 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+#ck-config .row.focus { background: var(--ck-border, #123); }
+/* Inert under the active render mode: visible so the mode's reach is obvious. */
+#ck-config .row.disabled { opacity: 0.35; pointer-events: none; }
+#ck-config .hint { margin-top: 12px; opacity: 0.7; letter-spacing: 2px; }
+
+.ck-slider { display: flex; align-items: center; gap: 8px; min-width: 180px; }
+.ck-slider-track { position: relative; flex: 1; height: 6px; background: var(--ck-border, #123); cursor: pointer; }
+.ck-slider-fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--ck-accent, #0af); opacity: 0.5; }
+.ck-slider-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ck-fg, #9cf); opacity: 0.8; transform: translateX(-1px); }
+.ck-slider-thumb { position: absolute; top: -3px; width: 4px; height: 12px; background: var(--ck-accent, #0af); transform: translateX(-2px); }
+.ck-slider-val { min-width: 4ch; text-align: right; }
+
+/* ---------- v3 widget catalog ---------- */
+
+.ck-fact { display: flex; justify-content: space-between; gap: 8px; font-size: var(--ck-size, 11px); }
+.ck-fact .k { opacity: 0.65; }
+.ck-fact .v { text-align: right; }
+.ck-fact-line { font-size: var(--ck-size, 11px); opacity: 0.85; margin-top: 4px; }
+.ck-fact-line.hidden { display: none; }
+
+.ck-clock-big { font-size: calc(var(--ck-size, 11px) * 2.5); line-height: 1.1; letter-spacing: 2px; }
+
+.ck-cpu-grid { display: flex; flex-direction: column; gap: 3px; }
+.ck-cpu-pair { display: flex; gap: 6px; }
+.ck-cpu-cell { flex: 1; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ck-cpu-cell.empty { visibility: hidden; }
+.ck-cpu-label { font-size: 9px; opacity: 0.6; }
+.ck-cpu-track { flex: 1; height: 6px; background: var(--ck-track, rgba(255, 255, 255, 0.12)); }
+.ck-cpu-fill { height: 100%; width: 0; background: var(--ck-accent, #0af); transition: width 0.2s linear; }
+
+.ck-matrix { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; margin-bottom: 4px; }
+.ck-matrix i { display: block; aspect-ratio: 1; background: var(--ck-track, rgba(255, 255, 255, 0.12)); }
+.ck-matrix i.on { background: var(--ck-accent, #0af); }
+
+.ck-procs { width: 100%; font-size: calc(var(--ck-size, 11px) - 1px); border-collapse: collapse; table-layout: fixed; }
+.ck-procs th { text-align: left; opacity: 0.6; font-weight: normal; }
+.ck-procs td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-procs td:first-child, .ck-procs th:first-child { width: 22%; }
+.ck-procs td:last-child, .ck-procs th:last-child { width: 22%; text-align: right; }
+
+.ck-tree { max-height: 200px; overflow-y: auto; outline: none; }
+.ck-treerow { display: flex; gap: 4px; padding: 1px 4px; white-space: nowrap; cursor: pointer; }
+.ck-treerow.sel, .ck-treerow:hover { background: var(--ck-border, #123); }
+.ck-tree-glyph { opacity: 0.7; width: 1em; }
+.ck-tree-name { overflow: hidden; text-overflow: ellipsis; }
+
+.ck-fsgrid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow-y: auto; }
+.ck-tile {
+  width: 62px; padding: 4px 2px; border: 1px solid transparent; background: none;
+  color: inherit; font: inherit; font-size: calc(var(--ck-size, 11px) - 2px); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.ck-tile:hover { border-color: var(--ck-accent, #0af); }
+.ck-tile-glyph { font-size: 16px; opacity: 0.8; }
+.ck-tile-name { width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ck-tile.dir .ck-tile-glyph, .ck-tile.up .ck-tile-glyph, .ck-tile.disks .ck-tile-glyph { color: var(--ck-accent, #0af); }
+
+/* Spaces tabs match the in-glass CRT column: big blocky slabs, heavy colour,
+   black text. Inactive tabs stay clearly visible, just dimmer than active. */
+.ck-spaces { display: flex; gap: 6px; align-items: stretch; }
+.ck-space {
+  padding: 8px 22px; cursor: pointer; border: none;
+  font: 16px "IBM VGA", var(--ck-font, monospace);
+  background: color-mix(in srgb, var(--ck-fg, #9cf) 60%, var(--ck-bg, #05080d));
+  color: #000;
+}
+.ck-space-add {
+  padding: 8px 14px;
+  background: none; color: var(--ck-fg, #9cf);
+  border: 1px solid var(--ck-line, rgba(255, 255, 255, 0.25));
+  opacity: 0.7;
+}
+.ck-space-add:hover { opacity: 1; }
+.ck-space.is-active { background: var(--ck-accent, #0af); color: #000; }
+.ck-space.has-activity::after { content: " ●"; opacity: 0.7; }
+.ck-space.is-dragging { opacity: 0.5; outline: 1px dashed var(--ck-accent, #0af); }
+
+.ck-keyboard { display: flex; flex-direction: column; gap: 3px; }
+.ck-keyrow { display: flex; gap: 3px; justify-content: center; }
+.ck-key {
+  min-width: 22px; padding: 4px 5px; font: inherit; font-size: calc(var(--ck-size, 11px) - 1px); cursor: pointer;
+  background: var(--ck-panel-bg, rgba(10, 20, 30, 0.6)); color: inherit;
+  border: 1px solid var(--ck-line, rgba(255, 255, 255, 0.15));
+}
+.ck-key.wide { min-width: 40px; }
+.ck-key:active, .ck-key.latched { background: var(--ck-accent, #0af); color: #000; }
+
+.ck-fact .v[data-state="offline"] { color: var(--ck-warn, #f80); }
+.ck-fact .v[data-state="degraded"] { color: var(--ck-warn, #f80); opacity: 0.8; }
+.ck-grip { cursor: grab; opacity: 0.45; padding: 0 4px; align-self: center; }
+
+/* ---------- STORAGE widget ---------- */
+
+.ck-disk { margin-top: 6px; }
+.ck-disk:first-child { margin-top: 0; }
+.ck-disk-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--ck-size, 11px);
+}
+.ck-disk-head .warn { color: var(--ck-warn, #f80); }
+.ck-disk-cells { display: flex; gap: 2px; margin-top: 3px; }
+.ck-disk-cells i {
+  flex: 1;
+  height: 9px;
+  background: var(--ck-track, rgba(255, 255, 255, 0.12));
+}
+.ck-disk-cells i.on { background: var(--ck-accent, #0af); }
+.ck-disk-cells i.on.warn { background: var(--ck-warn, #f80); }
+
+/* ---------- v5.4 widgets ---------- */
+
+.ck-alert { color: var(--ck-warn, #f80); font-weight: bold; }
+.ck-alert.off { opacity: 0.25; }
+
+.ck-tok-bars { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 5px; }
+.ck-tok-bars i { flex: 1; background: var(--ck-track, rgba(255, 255, 255, 0.12)); min-height: 2px; }
+.ck-tok-bars i.on { background: var(--ck-accent, #0af); }
+
+.ck-logtail {
+  margin: 0;
+  font: calc(var(--ck-size, 11px) - 1px) var(--ck-font, monospace);
+  opacity: 0.85;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 140px;
+  overflow: hidden;
+}
+
+.ck-mini-row { display: flex; align-items: center; gap: 12px; }
+.ck-mini-date {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  font-size: calc(var(--ck-size, 11px) - 1px);
+  letter-spacing: 1px;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.ck-clock-big.warn { color: var(--ck-warn, #f80); }
+
+/* ---------- v5: direct widget management ---------- */
+
+.ck-add {
+  border: 1px dashed var(--ck-border, #123);
+  background: none;
+  color: var(--ck-fg, #9cf);
+  font: var(--ck-size, 11px) var(--ck-font, monospace);
+  padding: 4px 12px;
+  cursor: pointer;
+  opacity: 0.45;
+  flex: 0 0 auto;
+}
+.ck-add:hover { opacity: 1; border-color: var(--ck-accent, #0af); }
+
+.ck-menu { max-height: 320px; overflow-y: auto; }
+
+.ck-shortcuts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; font-size: 0.9em; }
+.ck-shortcuts-group { grid-column: 1 / -1; margin-top: 6px; opacity: 0.6; letter-spacing: 1px; }
+.ck-shortcuts-row { display: contents; }
+.ck-shortcuts-key { color: var(--ck-accent, #0af); white-space: nowrap; }
+
+/* ---------- v5: one CRT ----------
+   In cockpit + retro the whole window is the tube: the CRT canvas and the
+   capture layer expand to the viewport, the widget DOM goes invisible but
+   stays in layout for hit-testing, and DomLayer replays it into the
+   compositor so widgets ride the same shader as the terminal — bend,
+   scanlines, persistence, glow, mask. NextGen cockpit keeps plain DOM. */
+body[data-mode="cockpit"][data-fx="retro"] #ck-top,
+body[data-mode="cockpit"][data-fx="retro"] #ck-left,
+body[data-mode="cockpit"][data-fx="retro"] #ck-tabs,
+body[data-mode="cockpit"][data-fx="retro"] #ck-right,
+body[data-mode="cockpit"][data-fx="retro"] #ck-bottom {
+  opacity: 0;
+}
+body[data-mode="cockpit"][data-fx="retro"] #crt,
+body[data-mode="cockpit"][data-fx="retro"] #capture {
+  position: fixed;
+  inset: 0;
+}

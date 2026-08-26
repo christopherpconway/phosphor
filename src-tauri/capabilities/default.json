@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for all phosphor windows",
+  "windows": ["main", "w*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-destroy",
+    "core:webview:allow-create-webview-window",
+    "opener:default"
+  ]
+}

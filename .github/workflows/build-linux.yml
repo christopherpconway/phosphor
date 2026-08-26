@@ -1,0 +1,84 @@
+name: build-linux
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to upload the built bundles to (e.g. v0.4.0). Empty = artifacts only."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+            bundles: rpm,deb,appimage
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            bundles: rpm,deb
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build
+        run: |
+          npm ci
+          npm run tauri build -- --bundles ${{ matrix.bundles }}
+
+      # Release assets are the real destination and do not count against the
+      # Actions artifact storage quota (which locked builds out twice on
+      # 2026-08-22/23 even after the backlog was deleted).
+      - name: Upload bundles to release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ inputs.release_tag }}" \
+            src-tauri/target/release/bundle/rpm/*.rpm \
+            src-tauri/target/release/bundle/deb/*.deb \
+            $(ls src-tauri/target/release/bundle/appimage/*.AppImage 2>/dev/null || true) \
+            --clobber --repo "${{ github.repository }}"
+
+      - uses: actions/upload-artifact@v4
+        # Convenience copy only; a stale storage-quota snapshot must not fail
+        # the build (the release upload above is the one that matters).
+        continue-on-error: true
+        with:
+          name: phosphor-linux-${{ matrix.arch }}
+          path: |
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+          # These bundles are ~50MB/build and the private-repo artifact quota is
+          # small; without expiry they piled up to 2.1GB and blocked new uploads
+          # (2026-08-22). Keep each build only long enough to grab it.
+          retention-days: 7
+          # Replace the previous build's artifact of the same name instead of
+          # erroring, so re-runs don't leave orphans counting against quota.
+          overwrite: true
