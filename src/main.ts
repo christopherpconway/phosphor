@@ -1,6 +1,7 @@
 import { plainTextInput } from "./textinput.ts";
 import { createAttentionStore, spaceAttention } from "./attention/store.ts";
 import { classifyClaude } from "./attention/claude.ts";
+import { compileTrigger, matchTrigger, type Trigger } from "./attention/triggers.ts";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { CanvasAddon } from "@xterm/addon-canvas";
@@ -155,6 +156,8 @@ class Pane {
   atPrompt = false;
   /** Absolute buffer position where the prompt's input starts (133;B). */
   private inputStart: { x: number; y: number } | null = null;
+  /** Per-pane output watchers. */
+  triggers: Trigger[] = [];
 
   constructor(public id: number) {
     this.el = document.createElement("div");
@@ -258,10 +261,17 @@ class Pane {
           }, 800);
         }
         markActivity(this);
-        if (attention.get(this.id)?.fgProcess === "claude") {
+        if (attention.get(this.id)?.fgProcess === "claude" || this.triggers.length > 0) {
           const text = chunkDecoder.decode(b64ToBytes(ev.b64));
-          const c = classifyClaude(text.slice(-2000));
-          if (c) attention.apply({ kind: "claude", paneId: this.id, state: c }, Date.now());
+          if (attention.get(this.id)?.fgProcess === "claude") {
+            const c = classifyClaude(text.slice(-2000));
+            if (c) attention.apply({ kind: "claude", paneId: this.id, state: c }, Date.now());
+          }
+          if (this.triggers.length > 0) {
+            const lastLine = text.split("\n").pop() ?? "";
+            const hit = matchTrigger(this.triggers, lastLine);
+            if (hit) attention.apply({ kind: "trigger", paneId: this.id, label: hit.label }, Date.now());
+          }
         }
       } else {
         this.alive = false;
@@ -1386,6 +1396,19 @@ function openPaneMenu(pane: Pane, x: number, y: number) {
     menuItem(pane.logging ? "Stop logging output" : "Log output to file", false, () =>
       togglePaneLog(pane),
     ),
+    menuItem("Add watch trigger…", false, () => {
+      swapToInput(paneMenuEl, "regex or text to watch for", "", (v) => {
+        const result = compileTrigger(v, "");
+        if (typeof result === "string") {
+          swapToInput(paneMenuEl, "regex or text to watch for", result, () => {});
+        } else {
+          pane.triggers.push(result);
+        }
+      });
+    }),
+    menuItem(`Clear watch triggers (${pane.triggers.length})`, pane.triggers.length === 0, () => {
+      pane.triggers = [];
+    }),
     menuItem(visual.mode === "cockpit" ? "Cockpit mode off" : "Cockpit mode on", false, () =>
       setMode(visual.mode === "crt" ? "cockpit" : "crt"),
     ),
