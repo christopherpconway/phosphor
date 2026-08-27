@@ -13,6 +13,7 @@ test("valid values survive", () => {
     boot: false, sounds: false, brand: "", bar: DEFAULT_BAR, widgets: DEFAULT_LAYOUT,
     clockTz: {}, logPaths: {}, timerSecs: 1500, countdown: { target: "", label: "" },
     widgetSize: 11, barSize: 12, sidebars: "both", cursorBlink: true, pasteGuard: false,
+    attention: { enabled: true, tray: true, badges: true, sound: false },
   });
 });
 
@@ -21,5 +22,6 @@ test("partial objects fill from defaults", () => {
     boot: true, sounds: true, brand: "WOPR", bar: DEFAULT_BAR, widgets: DEFAULT_LAYOUT,
     clockTz: {}, logPaths: {}, timerSecs: 1500, countdown: { target: "", label: "" },
     widgetSize: 11, barSize: 12, sidebars: "both", cursorBlink: true, pasteGuard: false,
+    attention: { enabled: true, tray: true, badges: true, sound: false },
   });
 });

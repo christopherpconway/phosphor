@@ -43,6 +43,15 @@ export interface CockpitCfg {
    * often than it caught anything. Toggle it on in the config screen.
    */
   pasteGuard: boolean;
+  /** Attention detection: master switch, tray icon, tab badges, chime. */
+  attention: AttentionCfg;
+}
+
+export interface AttentionCfg {
+  enabled: boolean;
+  tray: boolean;
+  badges: boolean;
+  sound: boolean;
 }
 
 export const DEFAULT_COCKPIT: CockpitCfg = {
@@ -60,6 +69,7 @@ export const DEFAULT_COCKPIT: CockpitCfg = {
   sidebars: "both",
   cursorBlink: true,
   pasteGuard: false,
+  attention: { enabled: true, tray: true, badges: true, sound: false },
 };
 
 const SIDEBAR_VALUES: readonly Sidebars[] = ["both", "left", "right", "none"];
@@ -143,6 +153,17 @@ export function sanitizeCountdown(raw: unknown): { target: string; label: string
   return { target, label };
 }
 
+export function sanitizeAttention(raw: unknown): AttentionCfg {
+  const d = { ...DEFAULT_COCKPIT.attention };
+  if (typeof raw !== "object" || raw === null) return d;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.enabled === "boolean") d.enabled = o.enabled;
+  if (typeof o.tray === "boolean") d.tray = o.tray;
+  if (typeof o.badges === "boolean") d.badges = o.badges;
+  if (typeof o.sound === "boolean") d.sound = o.sound;
+  return d;
+}
+
 export function sanitizeCockpit(raw: unknown): CockpitCfg {
   const d = {
     ...DEFAULT_COCKPIT,
@@ -151,6 +172,7 @@ export function sanitizeCockpit(raw: unknown): CockpitCfg {
     clockTz: {},
     logPaths: {},
     countdown: { target: "", label: "" },
+    attention: { ...DEFAULT_COCKPIT.attention },
   };
   if (typeof raw !== "object" || raw === null) return d;
   const o = raw as Record<string, unknown>;
@@ -170,6 +192,7 @@ export function sanitizeCockpit(raw: unknown): CockpitCfg {
   d.sidebars = sanitizeSidebars(o.sidebars);
   if (typeof o.cursorBlink === "boolean") d.cursorBlink = o.cursorBlink;
   if (typeof o.pasteGuard === "boolean") d.pasteGuard = o.pasteGuard;
+  d.attention = sanitizeAttention(o.attention);
   return d;
 }
 

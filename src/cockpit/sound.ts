@@ -29,4 +29,7 @@ export const sound = {
   blip() {
     beep(620, 60, 0.03, "sine");
   },
+  attention() {
+    beep(880, 120, 0.04, "sine");
+  },
 };

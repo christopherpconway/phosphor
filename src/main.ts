@@ -359,7 +359,14 @@ const attention = createAttentionStore({
   // Focused means: the focused pane of the active space, in a focused window.
   isFocused: (id) => activeTab()?.focused === id && document.hasFocus(),
 });
-attention.onChange(() => renderChrome());
+let prevAttentionCount = 0;
+attention.onChange(() => {
+  if (!visual.ck.attention.enabled) return;
+  renderChrome();
+  const n = attention.attentionCount();
+  if (visual.ck.attention.sound && n > prevAttentionCount) sound.attention();
+  prevAttentionCount = n;
+});
 const focusedPane = (): Pane | undefined => {
   const t = activeTab();
   return t ? panes.get(t.focused) : undefined;
@@ -502,7 +509,9 @@ function renderChrome() {
           active: i === activeTabIdx,
           activity:
             paneIds(tab.layout).some((id) => panes.get(id)?.activity) && i !== activeTabIdx,
-          attention: spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
+          attention:
+            visual.ck.attention.enabled && visual.ck.attention.badges &&
+            spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
         })),
   );
   setAttention(attention.attentionCount());
@@ -1512,7 +1521,9 @@ const cockpit = initCockpit(
         active: i === activeTabIdx,
         activity:
           paneIds(tab.layout).some((id) => panes.get(id)?.activity) && i !== activeTabIdx,
-        attention: spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
+        attention:
+          visual.ck.attention.enabled && visual.ck.attention.badges &&
+          spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
       })),
     selectSpace: (i) => switchTab(i),
     reorderSpace: reorderTabs,
@@ -1650,6 +1661,7 @@ const configScreen = new ConfigScreen(
       pasteGuard: visual.ck.pasteGuard,
       boot: visual.ck.boot, sounds: visual.ck.sounds,
       brand: visual.ck.brand, bar: visual.ck.bar.map((b) => ({ ...b })),
+      attention: { ...visual.ck.attention },
     }),
     apply(patch) {
       if (patch.renderMode !== undefined) visual.renderMode = patch.renderMode;
@@ -1669,6 +1681,7 @@ const configScreen = new ConfigScreen(
       if (patch.sounds !== undefined) visual.ck.sounds = patch.sounds;
       if (patch.brand !== undefined) visual.ck.brand = patch.brand;
       if (patch.bar !== undefined) visual.ck.bar = patch.bar;
+      if (patch.attention !== undefined) visual.ck.attention = patch.attention;
       sound.setEnabled(visual.ck.sounds);
       cockpit.relayout();
       refreshVisual();
@@ -1784,6 +1797,7 @@ async function boot() {
   if (restored && tauriAlive) {
     setInterval(refreshCwds, 30000);
     const pollForeground = async () => {
+      if (!visual.ck.attention.enabled) return;
       const t = activeTab();
       if (!t) return;
       // Poll every pane in the window, not just the active space; a background

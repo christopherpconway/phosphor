@@ -7,7 +7,7 @@ import {
 } from "../crt.ts";
 import {
   BAR_SIZE_MAX, BAR_SIZE_MIN, WIDGET_SIZE_MAX, WIDGET_SIZE_MIN,
-  type BarItem, type Sidebars,
+  type AttentionCfg, type BarItem, type Sidebars,
 } from "./config.ts";
 import type { RenderMode } from "./visualcfg.ts";
 
@@ -60,6 +60,7 @@ export interface ScreenState {
   bar: BarItem[];
   widgetSize: number;
   barSize: number;
+  attention: AttentionCfg;
 }
 
 export interface CfgBindings {
@@ -244,6 +245,35 @@ function cockpitControls(): Ctl[] {
   ];
 }
 
+function attentionControls(): Ctl[] {
+  return [
+    {
+      label: "ATTENTION DETECTION",
+      kind: "toggle",
+      read: (s) => (s.attention.enabled ? "ON" : "OFF"),
+      change: (s) => ({ attention: { ...s.attention, enabled: !s.attention.enabled } }),
+    },
+    {
+      label: "MENU BAR ITEM",
+      kind: "toggle",
+      read: (s) => (s.attention.tray ? "ON" : "OFF"),
+      change: (s) => ({ attention: { ...s.attention, tray: !s.attention.tray } }),
+    },
+    {
+      label: "TAB BADGES",
+      kind: "toggle",
+      read: (s) => (s.attention.badges ? "ON" : "OFF"),
+      change: (s) => ({ attention: { ...s.attention, badges: !s.attention.badges } }),
+    },
+    {
+      label: "ATTENTION SOUND",
+      kind: "toggle",
+      read: (s) => (s.attention.sound ? "ON" : "OFF"),
+      change: (s) => ({ attention: { ...s.attention, sound: !s.attention.sound } }),
+    },
+  ];
+}
+
 interface Section {
   title: string;
   ctls: Ctl[];
@@ -255,6 +285,7 @@ export class ConfigScreen {
   private sections: Section[] = [
     { title: "TERMINAL", ctls: terminalControls() },
     { title: "COCKPIT", ctls: cockpitControls() },
+    { title: "ATTENTION", ctls: attentionControls() },
   ];
   private flat: Row[] = [];
   private root: HTMLElement | null = null;
