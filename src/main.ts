@@ -51,6 +51,7 @@ import { needsPasteConfirm, pastePreview, shellQuote, stripTrailingNewlines } fr
 import { Palette, type PaletteItem } from "./palette.ts";
 import { searchLines, type PaneHits } from "./globalsearch.ts";
 import { GlobalSearchOverlay } from "./globalsearch-overlay.ts";
+import { popClosed, pushClosed, serializeScrollback, type ClosedPane } from "./undoclose.ts";
 import { sanitizeCockpit, sanitizeMode, type CockpitCfg, type Mode } from "./cockpit/config.ts";
 import { effectiveVisual } from "./cockpit/skin.ts";
 import { sanitizeVisual, type SavedVisual } from "./cockpit/visualcfg.ts";
@@ -160,6 +161,9 @@ class Pane {
   atPrompt = false;
   /** Absolute buffer position where the prompt's input starts (133;B). */
   private inputStart: { x: number; y: number } | null = null;
+  /** Text queued for insertAtPrompt while the shell isn't at a prompt yet;
+   *  written (no carriage return) on the next OSC 133 B mark. */
+  private pendingInsert: string | null = null;
   /** Per-pane output watchers. */
   triggers: Trigger[] = [];
 
@@ -218,6 +222,11 @@ class Pane {
         const b = this.term.buffer.active;
         this.inputStart = { x: b.cursorX, y: b.baseY + b.cursorY };
         this.atPrompt = true;
+        if (this.pendingInsert !== null) {
+          const text = this.pendingInsert;
+          this.pendingInsert = null;
+          this.write(text);
+        }
       } else if (mark === "C") {
         this.atPrompt = false;
         this.inputStart = null;
@@ -326,6 +335,14 @@ class Pane {
     this.write((delta > 0 ? "\x1b[C" : "\x1b[D").repeat(Math.abs(delta)));
   }
 
+  /** Place text at the shell prompt without submitting it (no carriage
+   *  return). If the shell is already at a prompt, write immediately;
+   *  otherwise queue it for the next OSC 133 B mark (prompt just spawned). */
+  insertAtPrompt(text: string) {
+    if (this.atPrompt) this.write(text);
+    else this.pendingInsert = text;
+  }
+
   layoutPx(x: number, y: number, w: number, h: number, visible: boolean) {
     this.el.style.display = visible ? "block" : "none";
     this.el.style.left = `${x}px`;
@@ -370,6 +387,13 @@ let presets: Preset[] = [];
 let snippets: Snippet[] = [];
 const panes = new Map<number, Pane>();
 let nextPaneId = 1;
+/** Undo-close stack, in-memory only (cleared implicitly on app quit). */
+let closedStack: ClosedPane[] = [];
+
+function captureScroll(pane: Pane): string {
+  const b = pane.term.buffer.active;
+  return serializeScrollback((i) => b.getLine(i)?.translateToString(true) ?? "", b.baseY + pane.term.rows);
+}
 
 const activeTab = (): Tab | undefined => tabs[activeTabIdx];
 const attention = createAttentionStore({
@@ -687,9 +711,26 @@ function reorderTabs(from: number, to: number) {
   scheduleSave();
 }
 
-function closeTab(i: number) {
+/** userInitiated: true for a direct space close (tab-bar click, menu item);
+ *  false when closeFocused calls this as a cascade, which already captured
+ *  the pane itself. Never captures when this is the last tab (the window is
+ *  closing, not restoring into anything). */
+function closeTab(i: number, userInitiated = true) {
   const t = tabs[i];
   if (!t) return;
+  if (userInitiated && tabs.length > 1) {
+    const leaf = findLeaf(t.layout, t.focused);
+    const pane = panes.get(t.focused);
+    if (pane) {
+      closedStack = pushClosed(closedStack, {
+        title: leaf?.name ?? t.title,
+        cwd: leaf?.cwd,
+        startCmd: leaf?.startCmd,
+        scroll: captureScroll(pane),
+        wasLastInTab: true,
+      });
+    }
+  }
   for (const id of paneIds(t.layout)) {
     panes.get(id)?.dispose();
     panes.delete(id);
@@ -740,12 +781,23 @@ function closeFocused() {
   const t = activeTab();
   if (!t) return;
   const id = t.focused;
+  const leaf = findLeaf(t.layout, id);
+  const pane = panes.get(id);
   const next = closePane(t.layout, id);
-  panes.get(id)?.dispose();
+  if (pane) {
+    closedStack = pushClosed(closedStack, {
+      title: leaf?.name ?? t.title,
+      cwd: leaf?.cwd,
+      startCmd: leaf?.startCmd,
+      scroll: captureScroll(pane),
+      wasLastInTab: next === null,
+    });
+  }
+  pane?.dispose();
   panes.delete(id);
   attention.apply({ kind: "closed", paneId: id }, Date.now());
   if (next === null) {
-    closeTab(activeTabIdx);
+    closeTab(activeTabIdx, false);
     return;
   }
   t.layout = next;
@@ -753,6 +805,30 @@ function closeFocused() {
   doRender();
   focusPane(t.focused);
   scheduleSave();
+}
+
+/** Restore the most recently closed pane: a new space if it cascaded to
+ *  closeTab, otherwise a split in the current space. Scrollback is written
+ *  back in verbatim, marked inert; a startup command is placed at the
+ *  prompt unsubmitted, never auto-run. */
+function undoClose() {
+  const { stack, item } = popClosed(closedStack);
+  closedStack = stack;
+  if (!item) return;
+  if (item.wasLastInTab) {
+    newTab(item.cwd);
+    const t = tabs[tabs.length - 1];
+    t.title = item.title;
+    renderChrome();
+  } else {
+    splitFocused("h");
+    const t = activeTab();
+    if (t && item.cwd) t.layout = updateLeaf(t.layout, t.focused, { cwd: item.cwd });
+  }
+  const pane = focusedPane();
+  if (!pane) return;
+  pane.term.write(item.scroll + "\r\n\x1b[2m-- restored (inert) --\x1b[0m\r\n");
+  if (item.startCmd) pane.insertAtPrompt(item.startCmd);
 }
 
 // ---------- input ----------
@@ -1012,6 +1088,8 @@ window.addEventListener(
       openSearch();
     } else if (sc?.id === "globalsearch") {
       globalSearchOverlay.show();
+    } else if (sc?.id === "undoclose") {
+      undoClose();
     } else if (sc?.id === "broadcast") {
       toggleBroadcast();
     } else if (sc?.id === "switchspace") {
@@ -1764,6 +1842,7 @@ function paletteItems(): PaletteItem[] {
     { label: "SPLIT RIGHT", fn: () => splitFocused("h") },
     { label: "SPLIT DOWN", fn: () => splitFocused("v") },
     { label: "CLOSE PANE", fn: () => closeFocused() },
+    { label: "UNDO CLOSE PANE", fn: () => undoClose() },
     { label: `BROADCAST INPUT ${activeTab()?.broadcast ? "OFF" : "ON"}`, fn: () => toggleBroadcast() },
     { label: "FIND IN SCROLLBACK", fn: () => openSearch() },
     { label: "GLOBAL SEARCH", fn: () => globalSearchOverlay.show() },

@@ -53,7 +53,7 @@ Any combination works: a flat modern terminal in Dracula is as valid as a heavil
 The things you use constantly, in plain terms:
 
 - **Spaces** are tabs. Make them with Cmd+T, switch with Cmd+1 through 9, rename or close them with a right-click, drag them to reorder.
-- **Split panes**: divide any space into side-by-side or stacked terminals (Cmd+D and Cmd+Shift+D). Cmd+W closes the current pane, then the space, then the window, in that order.
+- **Split panes**: divide any space into side-by-side or stacked terminals (Cmd+D and Cmd+Shift+D). Cmd+W closes the current pane, then the space, then the window, in that order. **Cmd+Shift+W undoes it**: the pane comes back with its scrollback restored (inert, read-only) and its startup command sitting unsubmitted at the prompt. Up to 5 deep.
 - **Multiple windows**, each with its own look and its own layout.
 - **The command palette** (Cmd+P) is the do-anything box: start typing and it filters every space, saved preset, color scheme, saved configuration, and action. Arrow keys and Enter to run.
 - **Presets** are launchers. Save a pane's folder and startup command, or save your entire set of open spaces as one preset, and reopen everything with two keys later (Cmd+Shift+T).
@@ -145,6 +145,7 @@ macOS uses Cmd; Linux and Windows use the terminal-standard Ctrl+Shift layer (pl
 | Switch space | Cmd+1..9 | Alt+1..9 |
 | Split right / split down | Cmd+D / Cmd+Shift+D | Ctrl+Shift+D / Ctrl+Shift+B |
 | Close pane, then space, then window | Cmd+W | Ctrl+Shift+W |
+| Undo close pane | Cmd+Shift+W | Ctrl+Shift+U |
 | Move focus between panes | Cmd+Option+Arrows | Ctrl+Shift+Arrows |
 | Broadcast typing to all panes in space | Cmd+Shift+B | Ctrl+Shift+I |
 | Command palette | Cmd+P | Ctrl+Shift+Space |

@@ -18,3 +18,8 @@ test("every shortcut is fully described and uniquely identified", () => {
 test("the help chord is itself in the table", () => {
   assert.ok(SHORTCUTS.some((s) => s.id === "help"));
 });
+
+test("globalsearch and undoclose are both in the table", () => {
+  assert.ok(SHORTCUTS.some((s) => s.id === "globalsearch"));
+  assert.ok(SHORTCUTS.some((s) => s.id === "undoclose"));
+});

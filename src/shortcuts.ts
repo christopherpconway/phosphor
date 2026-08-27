@@ -111,7 +111,17 @@ export const SHORTCUTS: readonly Shortcut[] = [
     label: "Close pane, then space, then window",
     mac: isMac ? "Cmd+W" : "Ctrl+Shift+W",
     group: "Panes",
-    match: (e) => appMod(e) && lower(e) === "w",
+    match: (e) => appMod(e) && (isMac ? !e.shiftKey : true) && lower(e) === "w",
+  },
+  {
+    id: "undoclose",
+    label: "Undo close pane",
+    mac: isMac ? "Cmd+Shift+W" : "Ctrl+Shift+U",
+    group: "Panes",
+    match: (e) =>
+      isMac
+        ? e.metaKey && e.shiftKey && !e.ctrlKey && lower(e) === "w"
+        : e.ctrlKey && e.shiftKey && lower(e) === "u",
   },
   {
     id: "focuspane",
