@@ -59,6 +59,8 @@ import { agentRows } from "./cockpit/widgets/agents.ts";
 import { DomLayer } from "./cockpit/domrender.ts";
 import { sound } from "./cockpit/sound.ts";
 import { ConfigScreen } from "./cockpit/configscreen.ts";
+import { SnippetLib } from "./snippetlib.ts";
+import { newSnippetId, sanitizeSnippets, withSnippet, type Snippet } from "./snippets.ts";
 import { findShortcut } from "./shortcuts.ts";
 import { ShortcutsOverlay } from "./cockpit/shortcuts-overlay.ts";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -363,6 +365,7 @@ interface Tab {
 const tabs: Tab[] = [];
 let activeTabIdx = 0;
 let presets: Preset[] = [];
+let snippets: Snippet[] = [];
 const panes = new Map<number, Pane>();
 let nextPaneId = 1;
 
@@ -759,6 +762,10 @@ function pasteText(pane: Pane, text: string) {
   // unless the guard is switched off in Config (PH-4).
   if (visual.ck.pasteGuard && needsPasteConfirm(trimmed)) openPasteConfirm(pane, trimmed);
   else pane.term.paste(trimmed);
+}
+
+function saveSnippets() {
+  invoke("snippets_save", { json: JSON.stringify(snippets, null, 2) }).catch(() => {});
 }
 
 // ---------- multi-line paste preview ----------
@@ -1391,6 +1398,18 @@ function openPaneMenu(pane: Pane, x: number, y: number) {
         scheduleSave();
       });
     }),
+    menuItem("Save selection as snippet…", !pane.term.hasSelection(), () => {
+      // Capture now: focusing the menu's text input can collapse the selection.
+      const code = pane.term.getSelection();
+      swapToInput(paneMenuEl, "snippet name", "", (name) => {
+        if (!name || !code) return;
+        snippets = withSnippet(snippets, {
+          id: newSnippetId(), name, code, pinned: false,
+          order: snippets.length, created: new Date().toISOString(),
+        });
+        saveSnippets();
+      });
+    }),
     menuItem("Close pane", false, () => closeFocused()),
     menuItem(`Broadcast input: ${t.broadcast ? "on" : "off"}`, false, () => toggleBroadcast()),
     menuItem(pane.logging ? "Stop logging output" : "Log output to file", false, () =>
@@ -1712,7 +1731,11 @@ function paletteItems(): PaletteItem[] {
       },
     },
     { label: "SHORTCUT HELP", fn: () => shortcuts.toggle() },
+    { label: "SNIPPET LIBRARY", fn: () => snippetLib.toggle() },
   );
+  for (const s of snippets) {
+    items.push({ label: `SNIPPET: ${s.name}`, fn: () => insertSnippet(s.code) });
+  }
   return items;
 }
 
@@ -1762,6 +1785,23 @@ const configScreen = new ConfigScreen(
     focusedPane()?.term.focus();
   },
 );
+
+function insertSnippet(code: string) {
+  const p = focusedPane();
+  if (p) {
+    pasteText(p, code);
+    p.term.focus();
+  }
+}
+
+const snippetLib = new SnippetLib({
+  get: () => snippets,
+  set: (next) => {
+    snippets = next;
+    saveSnippets();
+  },
+  insert: insertSnippet,
+});
 
 function setMode(m: Mode) {
   visual.mode = m;
@@ -1850,6 +1890,20 @@ async function boot() {
   } catch {
     // no Tauri backend (plain browser): demo workspace so visuals are checkable
     demoWorkspace();
+  }
+
+  try {
+    const raw = await invoke<string>("snippets_load");
+    if (raw) {
+      try {
+        snippets = sanitizeSnippets(JSON.parse(raw));
+      } catch {
+        await invoke("snippets_quarantine").catch(() => {});
+        snippets = [];
+      }
+    }
+  } catch {
+    // no Tauri backend: snippets stay empty, same as the demo workspace path
   }
 
   refreshVisual();

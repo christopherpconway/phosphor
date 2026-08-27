@@ -247,6 +247,55 @@ body[data-mode="cockpit"] #cockpit[data-sidebars="none"] { grid-template-columns
 #ck-config .row.disabled { opacity: 0.35; pointer-events: none; }
 #ck-config .hint { margin-top: 12px; opacity: 0.7; letter-spacing: 2px; }
 
+/* ---------- snippet library ---------- */
+
+#ck-sniplib {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: color-mix(in srgb, var(--ck-bg, #05080d) 92%, transparent);
+  color: var(--ck-fg, var(--tint, #9cf));
+  font: 13px var(--ck-font, monospace);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#ck-sniplib.hidden { display: none; }
+#ck-sniplib .panel {
+  width: 640px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border: 1px solid var(--ck-border, var(--tint, #123));
+  padding: 16px 24px;
+  clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+#ck-sniplib h1 { letter-spacing: 3px; color: var(--ck-accent, var(--tint, #0af)); margin-bottom: 10px; }
+.sniplib-list { max-height: 50vh; overflow-y: auto; }
+.sniplib-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.sniplib-row.focus { background: var(--ck-border, #123); }
+.sniplib-pin { width: 1.2em; opacity: 0.8; }
+.sniplib-name { min-width: 14ch; }
+.sniplib-code { opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.sniplib-confirm { color: var(--ck-warn, #f80); white-space: nowrap; }
+.sniplib-empty { opacity: 0.6; padding: 6px; }
+.sniplib-msg { min-height: 1.4em; color: var(--ck-warn, #f80); letter-spacing: 1px; }
+.sniplib-form { display: flex; flex-direction: column; gap: 8px; }
+.sniplib-field, .sniplib-textarea {
+  background: var(--ck-panel-bg, rgba(10, 20, 30, 0.6));
+  color: inherit;
+  font: inherit;
+  border: 1px solid var(--ck-border, var(--tint, #123));
+  padding: 6px 8px;
+}
+.sniplib-textarea { resize: vertical; }
+#ck-sniplib .hint { margin-top: 12px; opacity: 0.7; letter-spacing: 2px; }
+
 .ck-slider { display: flex; align-items: center; gap: 8px; min-width: 180px; }
 .ck-slider-track { position: relative; flex: 1; height: 6px; background: var(--ck-border, #123); cursor: pointer; }
 .ck-slider-fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--ck-accent, #0af); opacity: 0.5; }
