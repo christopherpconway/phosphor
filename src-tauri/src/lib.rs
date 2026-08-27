@@ -448,8 +448,19 @@ struct TrayState(Mutex<HashMap<String, Vec<TrayItem>>>); // window label -> item
 fn rebuild_tray(app: &AppHandle, state: &TrayState) {
     let guard = state.0.lock().unwrap();
     let total: usize = guard.values().map(|v| v.len()).sum();
+    let reporting = guard.values().filter(|v| !v.is_empty()).count();
     let menu = Menu::new(app).unwrap();
-    for (win, items) in guard.iter() {
+    let mut wins: Vec<&String> = guard.keys().collect();
+    wins.sort();
+    for win in wins {
+        let items = &guard[win];
+        if items.is_empty() {
+            continue;
+        }
+        if reporting > 1 {
+            let hdr = MenuItem::with_id(app, format!("hdr::{win}"), win, false, None::<&str>).unwrap();
+            let _ = menu.append(&hdr);
+        }
         for it in items {
             // Menu item id carries the routing: "<window label>::<pane id>".
             let mi = MenuItem::with_id(app, format!("{win}::{}", it.id), &it.label, true, None::<&str>).unwrap();

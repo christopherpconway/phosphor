@@ -1709,7 +1709,7 @@ const configScreen = new ConfigScreen(
       if (patch.sounds !== undefined) visual.ck.sounds = patch.sounds;
       if (patch.brand !== undefined) visual.ck.brand = patch.brand;
       if (patch.bar !== undefined) visual.ck.bar = patch.bar;
-      if (patch.attention !== undefined) visual.ck.attention = patch.attention;
+      if (patch.attention !== undefined) { visual.ck.attention = patch.attention; pushTray(); }
       sound.setEnabled(visual.ck.sounds);
       cockpit.relayout();
       refreshVisual();
