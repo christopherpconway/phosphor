@@ -2,7 +2,7 @@
 
 A terminal with either a Retro CRT or Next-Gen look wrapped in a system cockpit, built for living in AI command-line sessions all day. One terminal, two personalities: a glowing amber tube from 1982, or a flat Tron-style dashboard from 20 years in the future.
 
-![version](https://img.shields.io/badge/version-0.7.0-green) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)
+![version](https://img.shields.io/badge/version-0.8.0-green) ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue)
 
 ![Phosphor in NextGen Tron](docs/screenshots/hero-nextgen-tron.png)
 *NextGen mode, Tron scheme, cockpit on*
@@ -59,16 +59,38 @@ The things you use constantly, in plain terms:
 - **Presets** are launchers. Save a pane's folder and startup command, or save your entire set of open spaces as one preset, and reopen everything with two keys later (Cmd+Shift+T).
 - **Configurations** are looks. Save your current combination of widgets, scheme, effects, and font under a name, and switch between them from the palette. New windows can open in any saved look.
 - **Everything persists.** Your spaces, splits, folders, and startup commands are saved automatically and restored when you relaunch.
-- **Find in scrollback** (Cmd+F) highlights matches as you type. **Cmd+K** clears the screen. **Cmd+click** any link in output to open it in your browser.
+- **Find in scrollback** (Cmd+F) highlights matches as you type. **Global search** (Cmd+Shift+F) searches every pane in every space at once and jumps you straight to the match, with the query already loaded into find-in-scrollback there. **Cmd+K** clears the screen. **Cmd+click** any link in output to open it in your browser.
 - **Broadcast typing** (Cmd+Shift+B): type in one pane, and it goes to every pane in the space. Handy for driving several AI sessions at once.
 - **Files and images drop right in.** Drag a file onto the window, or paste an image or a copied file with Cmd+V, and its path is inserted at the prompt, ready for an AI CLI to read.
 - **Session logging**: right-click a pane to record everything it outputs to a file.
+
+## Attention
+
+Phosphor watches every pane, not just the one you're looking at, so a background AI session or a long build doesn't go silent when you switch away. Detection runs on several signals at once, cheapest first:
+
+- **Foreground process poll**: which command is running in each pane's shell right now, so a pane goes from idle to running the moment something other than the shell itself takes over.
+- **Terminal bell** and **OSC 9** notifications: the two standard ways a program asks for attention; OSC 9's message text is captured and shown.
+- **Shell integration's command-done mark** (OSC 133;D): a background pane's foreground command finishing gets marked done.
+- **A Claude Code classifier** (no config needed): recognizes Claude Code's own spinner and idle-prompt output well enough to tell "working" from "needs input" while it runs in a pane.
+- **Watch triggers**: right-click a pane and add a regex or plain text to watch for; it's checked against just the newest output line, so it never rescans scrollback. An invalid regex re-prompts you inline instead of failing silently. Right-click again to clear a pane's triggers.
+
+Any pane holding attention shows up everywhere at once: a badge on its space tab and on the SPACES widget, a row in the AGENTS cockpit widget (click to jump straight to that pane), a live count in the ATTN status bar segment, and a count on the macOS menu bar tray icon, whose menu lists every pane across every open window so you can jump to any of them from one place.
+
+The ATTENTION group in the config screen (Cmd+,) controls all of it: ATTENTION DETECTION is the master switch (off silences every surface below it), then MENU BAR ITEM, TAB BADGES, and ATTENTION SOUND toggle independently. ATTENTION SOUND is off by default; every surface that can make noise has its own toggle, so you can run fully visual with nothing audible.
+
+If you use Claude Code's own hooks, wiring a `Notification` hook (for permission and idle prompts) and a `Stop` hook (for turn completion) to emit an OSC 9 sequence gives Phosphor exact state transitions instead of pattern-matching Claude Code's output. This is optional: the built-in classifier above works without any hook setup.
+
+## Snippets
+
+Right-click a pane with text selected and choose "Save selection as snippet…" to keep it. Snippets live in the SNIPPETS cockpit widget: the 10 pinned ones sit there by default, type to search the full library by name first (falling back to a match inside the snippet's own text), and Enter or a click inserts the snippet at the focused pane's prompt. It never runs on its own, and a multi-line snippet goes through the same paste-preview guard as a normal paste.
+
+The full library opens as a BIOS-style overlay (command palette entry SNIPPET LIBRARY, or the "open library…" row at the bottom of the widget): browse everything, star up to 10 to pin them, or add and edit snippets by hand. Snippets are saved to disk and survive a restart.
 
 ## Cockpit mode
 
 Cmd+Shift+M wraps the terminal in a live dashboard. Widgets sit in five zones around the terminal: a strip along the top, columns on the left and right, a tab strip, and a strip along the bottom. In retro mode, the whole cockpit renders through the CRT shader, so widgets curve and glow with the terminal; clicks still land exactly where they should.
 
-### The widgets, all 21
+### The widgets, all 23
 
 | Widget | What it shows |
 |---|---|
@@ -84,6 +106,8 @@ Cmd+Shift+M wraps the terminal in a live dashboard. Widgets sit in five zones ar
 | STOPWATCH | Counts up, with start, stop, and reset |
 | COUNTDOWN | Days and hours to a date you set (a birthday, a deadline); the label becomes its title |
 | PROCESSES | The top 8 processes using your CPU |
+| SNIPPETS | The 10 pinned snippets, type to search the whole library, click or Enter inserts at the focused pane's prompt (never runs it) |
+| AGENTS | Every pane currently holding your attention, needs-input first then newest-first; click a row to jump there |
 | NETWORK | Whether you're online, on what interface, at what address, and your ping |
 | GLOBE | A wireframe globe plotting where your network connections actually go |
 | RADAR | A rotating radar sweep; every remote server your machine is talking to gets a blip |
@@ -113,15 +137,18 @@ Adding, moving, and removing widgets happens in place: every zone ends in a `+` 
 | SCHEME: NAME | Switch color scheme instantly |
 | CONFIG: LOAD / SAVE AS… / DELETE / RESET | Manage saved looks |
 | NEW WINDOW / NEW WINDOW: name | Open another window, same look or a named one |
-| NEW SPACE, SPLIT RIGHT, SPLIT DOWN, CLOSE PANE | Layout actions |
+| NEW SPACE, SPLIT RIGHT, SPLIT DOWN, CLOSE PANE, UNDO CLOSE PANE | Layout actions |
 | BROADCAST INPUT ON/OFF | Toggle type-to-all-panes |
 | FIND IN SCROLLBACK | Open search |
+| GLOBAL SEARCH | Search every pane in every space |
+| SNIPPET LIBRARY | Open the snippet overlay |
+| SNIPPET: name | Insert that snippet at the focused pane's prompt |
 | COCKPIT MODE ON/OFF | Toggle the dashboard |
 | CONFIG | Open the settings screen |
 | SHORTCUT HELP | Show the key list |
 | FULLSCREEN | Toggle fullscreen |
 
-**Right-click a pane** for: paste, split right or down, rename this pane, set or clear a command that runs when the pane starts, save the pane as a preset, close it, toggle broadcast, start or stop logging its output to a file, toggle cockpit mode, open config, and fullscreen.
+**Right-click a pane** for: paste, split right or down, rename this pane, set or clear a command that runs when the pane starts, save the pane as a preset, save the current selection as a snippet, close it, toggle broadcast, start or stop logging its output to a file, add or clear a watch trigger, toggle cockpit mode, open config, and fullscreen.
 
 **Right-click a space tab** to rename or close it.
 
