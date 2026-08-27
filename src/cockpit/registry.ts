@@ -10,6 +10,7 @@ import { createHwInfo } from "./widgets/hwinfo.ts";
 import { createCpuPerCore } from "./widgets/cpu.ts";
 import { createMemoryMatrix } from "./widgets/memory.ts";
 import { createProcs } from "./widgets/procs.ts";
+import { createSnippets } from "./widgets/snippets.ts";
 import { createAgents, type AttentionRow } from "./widgets/agents.ts";
 import { createNetStatus } from "./widgets/netstatus.ts";
 import { createFsTree, type FsTreeWidget } from "./widgets/fstree.ts";
@@ -23,6 +24,7 @@ import { createCountdown, createStopwatch, createTimer } from "./widgets/timers.
 import { createShortcutsWidget } from "./widgets/shortcuts.ts";
 import type { CockpitCfg } from "./config.ts";
 import type { Stats } from "./stats.ts";
+import type { Snippet } from "../snippets.ts";
 import { kindOf, WIDGET_TITLES, type Widget } from "./widget.ts";
 
 export interface WidgetDeps {
@@ -35,6 +37,9 @@ export interface WidgetDeps {
   addSpace(): void;
   getAttention(): AttentionRow[];
   jumpToPane(paneId: number): void;
+  getSnippets(): Snippet[];
+  insertSnippet(code: string): void;
+  openSnippetLib(): void;
 }
 
 /** Marks a widget's drag handle: its panel header if present, else the root.
@@ -78,6 +83,13 @@ export function buildWidget(id: string, deps: WidgetDeps): Widget {
       break;
     case "procs":
       w = createProcs();
+      break;
+    case "snippets":
+      w = createSnippets({
+        getSnippets: deps.getSnippets,
+        insertSnippet: deps.insertSnippet,
+        openSnippetLib: deps.openSnippetLib,
+      });
       break;
     case "agents":
       w = createAgents({ getRows: deps.getAttention, jump: deps.jumpToPane });

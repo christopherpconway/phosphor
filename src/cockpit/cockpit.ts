@@ -20,6 +20,7 @@ import type { FsTreeWidget } from "./widgets/fstree.ts";
 import type { AttentionRow } from "./widgets/agents.ts";
 import type { SpaceInfo, SpacesWidget } from "./widgets/spaces.ts";
 import type { BottomBar } from "./clock.ts";
+import type { Snippet } from "../snippets.ts";
 
 export interface Cockpit {
   onModeChange(m: Mode): void;
@@ -38,6 +39,9 @@ export interface CockpitDeps {
   addSpace(): void;
   getAttention(): AttentionRow[];
   jumpToPane(paneId: number): void;
+  getSnippets(): Snippet[];
+  insertSnippet(code: string): void;
+  openSnippetLib(): void;
 }
 
 const ZONE_EL: Record<string, string> = {

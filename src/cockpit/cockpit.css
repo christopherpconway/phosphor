@@ -344,6 +344,18 @@ body[data-mode="cockpit"] #cockpit[data-sidebars="none"] { grid-template-columns
 .ck-tree-glyph { opacity: 0.7; width: 1em; }
 .ck-tree-name { overflow: hidden; text-overflow: ellipsis; }
 
+.ck-snip-filter {
+  width: 100%; margin-bottom: 4px; padding: 2px 4px; font: inherit; color: inherit;
+  background: transparent; border: 1px solid var(--ck-line, rgba(255, 255, 255, 0.25));
+}
+.ck-snip-row { display: flex; gap: 6px; padding: 1px 4px; white-space: nowrap; cursor: pointer; overflow: hidden; }
+.ck-snip-row.sel, .ck-snip-row:hover { background: var(--ck-border, #123); }
+.ck-snip-name { flex-shrink: 0; }
+.ck-snip-code { opacity: 0.6; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.ck-snip-divider { opacity: 0.5; padding: 2px 4px; text-align: center; }
+.ck-snip-open { cursor: pointer; padding: 1px 4px; }
+.ck-snip-open:hover { background: var(--ck-border, #123); }
+
 .ck-fsgrid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow-y: auto; }
 .ck-tile {
   width: 62px; padding: 4px 2px; border: 1px solid transparent; background: none;

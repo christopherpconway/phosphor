@@ -1616,6 +1616,12 @@ const cockpit = initCockpit(
         focusPane(paneId);
       }
     },
+    getSnippets: () => snippets,
+    insertSnippet: (code) => {
+      const p = focusedPane();
+      if (p) { pasteText(p, code); p.term.focus(); }
+    },
+    openSnippetLib: () => snippetLib.toggle(),
   },
   () => visual.ck,
   (patch) => { Object.assign(visual.ck, patch); saveVisual(); cockpit.relayout(); },

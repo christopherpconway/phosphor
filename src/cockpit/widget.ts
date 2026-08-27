@@ -3,7 +3,7 @@ import type { Stats } from "./stats.ts";
 
 export type WidgetId =
   | "spaces" | "clock" | "clockmini" | "hwinfo" | "cpu" | "memory"
-  | "procs" | "agents" | "netstatus" | "globe" | "traffic" | "files"
+  | "procs" | "snippets" | "agents" | "netstatus" | "globe" | "traffic" | "files"
   | "keyboard" | "statusbar" | "disk" | "tokens" | "radar" | "logtail"
   | "timer" | "stopwatch" | "countdown" | "shortcuts";
 export type Zone = "top" | "left" | "tabs" | "right" | "bottom";
@@ -13,7 +13,7 @@ export type Zone = "top" | "left" | "tabs" | "right" | "bottom";
 export const WIDGET_IDS: readonly WidgetId[] = [
   "spaces", "clock", "clockmini", "hwinfo", "cpu", "memory", "disk", "tokens",
   "timer", "stopwatch", "countdown",
-  "procs", "agents", "netstatus", "globe", "radar", "traffic", "files",
+  "procs", "snippets", "agents", "netstatus", "globe", "radar", "traffic", "files",
   "keyboard", "logtail", "statusbar", "shortcuts",
 ];
 export const ZONES: readonly Zone[] = ["top", "left", "tabs", "right", "bottom"];
@@ -88,6 +88,7 @@ export const WIDGET_TITLES: Record<WidgetId, string> = {
   cpu: "CPU",
   memory: "MEMORY",
   procs: "PROCESSES",
+  snippets: "SNIPPETS",
   agents: "AGENTS",
   netstatus: "NETWORK",
   globe: "GLOBE",
@@ -128,6 +129,7 @@ const DEFAULT_ZONE: Record<WidgetId, Zone> = {
   cpu: "left",
   memory: "left",
   procs: "left",
+  snippets: "left",
   agents: "right",
   netstatus: "right",
   globe: "right",
@@ -154,6 +156,7 @@ const DEFAULT_ENABLED: Record<WidgetId, boolean> = {
   cpu: true,
   memory: true,
   procs: true,
+  snippets: true,
   agents: true,
   netstatus: true,
   globe: true,
@@ -180,7 +183,7 @@ export const DEFAULT_LAYOUT: WidgetLayout = {
     tabs: ["spaces"],
     left: [
       "clock", "clockmini", "hwinfo", "cpu", "memory", "disk", "tokens",
-      "timer", "stopwatch", "countdown", "procs",
+      "timer", "stopwatch", "countdown", "procs", "snippets",
     ],
     right: ["agents", "netstatus", "globe", "radar", "traffic"],
     bottom: ["files", "keyboard", "logtail", "statusbar", "shortcuts"],
