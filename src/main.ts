@@ -1397,14 +1397,16 @@ function openPaneMenu(pane: Pane, x: number, y: number) {
       togglePaneLog(pane),
     ),
     menuItem("Add watch trigger…", false, () => {
-      swapToInput(paneMenuEl, "regex or text to watch for", "", (v) => {
-        const result = compileTrigger(v, "");
-        if (typeof result === "string") {
-          swapToInput(paneMenuEl, "regex or text to watch for", result, () => {});
-        } else {
-          pane.triggers.push(result);
+      const commitTrigger = (v: string) => {
+        if (!v) return;
+        const t = compileTrigger(v, "");
+        if (typeof t === "string") {
+          swapToInput(paneMenuEl, t, "", commitTrigger);
+          return;
         }
-      });
+        pane.triggers.push(t);
+      };
+      swapToInput(paneMenuEl, "regex or text to watch for", "", commitTrigger);
     }),
     menuItem(`Clear watch triggers (${pane.triggers.length})`, pane.triggers.length === 0, () => {
       pane.triggers = [];
