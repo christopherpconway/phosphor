@@ -1,5 +1,6 @@
 import { plainTextInput } from "./textinput.ts";
 import { createAttentionStore } from "./attention/store.ts";
+import { classifyClaude } from "./attention/claude.ts";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { CanvasAddon } from "@xterm/addon-canvas";
@@ -124,6 +125,8 @@ function termTheme(e: ReturnType<typeof effectiveVisual>) {
 
 const b64ToBytes = (b64: string) =>
   Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+
+const chunkDecoder = new TextDecoder();
 
 let tauriAlive = true; // false = browser demo mode
 
@@ -253,6 +256,11 @@ class Pane {
           }, 800);
         }
         markActivity(this);
+        if (attention.get(this.id)?.fgProcess === "claude") {
+          const text = chunkDecoder.decode(b64ToBytes(ev.b64));
+          const c = classifyClaude(text.slice(-2000));
+          if (c) attention.apply({ kind: "claude", paneId: this.id, state: c }, Date.now());
+        }
       } else {
         this.alive = false;
         this.exited = true;
