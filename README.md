@@ -138,6 +138,7 @@ macOS uses Cmd; Linux and Windows use the terminal-standard Ctrl+Shift layer (pl
 | Copy selection | Cmd+C | Ctrl+Shift+C |
 | Clear scrollback | Cmd+K | Ctrl+Shift+K |
 | Find in scrollback | Cmd+F | Ctrl+Shift+F |
+| Global search (all panes and spaces) | Cmd+Shift+F | Ctrl+Shift+G |
 | New space | Cmd+T | Ctrl+Shift+T |
 | Preset picker | Cmd+Shift+T | Ctrl+Shift+P |
 | New window | Cmd+Shift+N | Ctrl+Shift+N |

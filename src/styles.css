@@ -187,6 +187,61 @@ body {
 #ck-palette .item.sel,
 #ck-palette .item:hover { background: color-mix(in srgb, var(--ck-accent, #46d06c) 22%, transparent); }
 
+/* ---------- global search ---------- */
+
+#ck-globalsearch {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+#ck-globalsearch.hidden { display: none; }
+#ck-globalsearch .panel {
+  width: 560px;
+  max-height: 60vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: color-mix(in srgb, var(--ck-bg, #0c100c) 96%, transparent);
+  border: 1px solid var(--ck-border, #2e5c39);
+  color: var(--ck-fg, #7dffa0);
+  font-family: "IBM VGA", monospace;
+  font-size: 14px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+#ck-globalsearch input {
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: color-mix(in srgb, var(--ck-bg, #06140a) 70%, black);
+  color: inherit;
+  border: 1px solid var(--ck-border, #2e5c39);
+  font: inherit;
+}
+#ck-globalsearch .items { overflow-y: auto; }
+#ck-globalsearch .group {
+  padding: 4px 8px;
+  opacity: 0.6;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+#ck-globalsearch .item {
+  display: flex;
+  gap: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#ck-globalsearch .item.sel,
+#ck-globalsearch .item:hover { background: color-mix(in srgb, var(--ck-accent, #46d06c) 22%, transparent); }
+
 /* ---------- multi-line paste preview ---------- */
 
 #pasteconfirm {

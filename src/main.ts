@@ -49,6 +49,8 @@ import {
 import { setAttention, setCfgLabel } from "./cockpit/clock.ts";
 import { needsPasteConfirm, pastePreview, shellQuote, stripTrailingNewlines } from "./textutils.ts";
 import { Palette, type PaletteItem } from "./palette.ts";
+import { searchLines, type PaneHits } from "./globalsearch.ts";
+import { GlobalSearchOverlay } from "./globalsearch-overlay.ts";
 import { sanitizeCockpit, sanitizeMode, type CockpitCfg, type Mode } from "./cockpit/config.ts";
 import { effectiveVisual } from "./cockpit/skin.ts";
 import { sanitizeVisual, type SavedVisual } from "./cockpit/visualcfg.ts";
@@ -843,6 +845,44 @@ searchInput.addEventListener("input", () => {
   focusedPane()?.search.findNext(searchInput.value, { incremental: true });
 });
 
+// ---------- global search (every pane, every space) ----------
+
+function globalSearch(q: string): { results: PaneHits[]; truncated: boolean } {
+  const results: PaneHits[] = [];
+  let total = 0;
+  let truncated = false;
+  outer: for (let tabIdx = 0; tabIdx < tabs.length; tabIdx++) {
+    const t = tabs[tabIdx];
+    for (const paneId of paneIds(t.layout)) {
+      const pane = panes.get(paneId);
+      if (!pane) continue;
+      const b = pane.term.buffer.active;
+      const hits = searchLines((i) => b.getLine(i)?.translateToString(true) ?? "", b.baseY + pane.term.rows, q, 50);
+      if (hits.length === 0) continue;
+      if (hits.length === 50) truncated = true;
+      const room = 200 - total;
+      if (room <= 0) {
+        truncated = true;
+        break outer;
+      }
+      const capped = hits.length > room ? hits.slice(0, room) : hits;
+      if (capped.length < hits.length) truncated = true;
+      total += capped.length;
+      const leaf = findLeaf(t.layout, paneId);
+      results.push({ tabIdx, paneId, label: `${t.title} / ${leaf?.name ?? "pane"}`, hits: capped });
+    }
+  }
+  return { results, truncated };
+}
+
+const globalSearchOverlay = new GlobalSearchOverlay(globalSearch, (tabIdx, paneId, q) => {
+  switchTab(tabIdx);
+  focusPane(paneId);
+  openSearch();
+  searchInput.value = q;
+  focusedPane()?.search.findNext(q);
+});
+
 // ---------- pane output logging ----------
 
 function togglePaneLog(pane: Pane) {
@@ -970,6 +1010,8 @@ window.addEventListener(
       palette.toggle();
     } else if (sc?.id === "find") {
       openSearch();
+    } else if (sc?.id === "globalsearch") {
+      globalSearchOverlay.show();
     } else if (sc?.id === "broadcast") {
       toggleBroadcast();
     } else if (sc?.id === "switchspace") {
@@ -1724,6 +1766,7 @@ function paletteItems(): PaletteItem[] {
     { label: "CLOSE PANE", fn: () => closeFocused() },
     { label: `BROADCAST INPUT ${activeTab()?.broadcast ? "OFF" : "ON"}`, fn: () => toggleBroadcast() },
     { label: "FIND IN SCROLLBACK", fn: () => openSearch() },
+    { label: "GLOBAL SEARCH", fn: () => globalSearchOverlay.show() },
     {
       label: visual.mode === "cockpit" ? "COCKPIT MODE OFF" : "COCKPIT MODE ON",
       fn: () => setMode(visual.mode === "crt" ? "cockpit" : "crt"),

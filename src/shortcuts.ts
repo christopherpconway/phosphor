@@ -55,6 +55,16 @@ export const SHORTCUTS: readonly Shortcut[] = [
     match: (e) => (isMac ? e.metaKey && !e.ctrlKey && !e.shiftKey : e.ctrlKey && e.shiftKey) && lower(e) === "f",
   },
   {
+    id: "globalsearch",
+    label: "Global search (all panes and spaces)",
+    mac: isMac ? "Cmd+Shift+F" : "Ctrl+Shift+G",
+    group: "Editing",
+    match: (e) =>
+      isMac
+        ? e.metaKey && e.shiftKey && !e.ctrlKey && lower(e) === "f"
+        : e.ctrlKey && e.shiftKey && lower(e) === "g",
+  },
+  {
     id: "newspace",
     label: "New space",
     mac: isMac ? "Cmd+T" : "Ctrl+Shift+T",
