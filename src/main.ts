@@ -1,7 +1,7 @@
 import { plainTextInput } from "./textinput.ts";
 import { createAttentionStore, spaceAttention } from "./attention/store.ts";
 import { classifyClaude } from "./attention/claude.ts";
-import { compileTrigger, matchTrigger, type Trigger } from "./attention/triggers.ts";
+import { compileTrigger, matchChunk, type Trigger } from "./attention/triggers.ts";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { CanvasAddon } from "@xterm/addon-canvas";
@@ -261,7 +261,8 @@ class Pane {
     const channel = new Channel<PtyEvent>();
     channel.onmessage = (ev) => {
       if (ev.type === "data") {
-        this.term.write(b64ToBytes(ev.b64));
+        const bytes = b64ToBytes(ev.b64);
+        this.term.write(bytes);
         // Fallback for shells without OSC 133 (bash without the README
         // snippet): fire the start command once output settles.
         if (this.pendingCmd !== null && this.settleTimer === null && !this.integrated) {
@@ -274,15 +275,15 @@ class Pane {
           }, 800);
         }
         markActivity(this);
-        if (attention.get(this.id)?.fgProcess === "claude" || this.triggers.length > 0) {
-          const text = chunkDecoder.decode(b64ToBytes(ev.b64));
-          if (attention.get(this.id)?.fgProcess === "claude") {
+        const att = attention.get(this.id);
+        if (att?.fgProcess === "claude" || this.triggers.length > 0) {
+          const text = chunkDecoder.decode(bytes);
+          if (att?.fgProcess === "claude") {
             const c = classifyClaude(text.slice(-2000));
             if (c) attention.apply({ kind: "claude", paneId: this.id, state: c }, Date.now());
           }
           if (this.triggers.length > 0) {
-            const lastLine = text.split("\n").pop() ?? "";
-            const hit = matchTrigger(this.triggers, lastLine);
+            const hit = matchChunk(this.triggers, text);
             if (hit) attention.apply({ kind: "trigger", paneId: this.id, label: hit.label }, Date.now());
           }
         }
@@ -385,6 +386,15 @@ const tabs: Tab[] = [];
 let activeTabIdx = 0;
 let presets: Preset[] = [];
 let snippets: Snippet[] = [];
+// snippets.json is one shared file; another window's save broadcasts here so
+// this window's in-memory list stays in sync without echoing a re-save.
+listen<string>("snippets-changed", (e) => {
+  try {
+    snippets = sanitizeSnippets(JSON.parse(e.payload));
+  } catch {
+    // malformed payload: keep the current in-memory list
+  }
+});
 const panes = new Map<number, Pane>();
 let nextPaneId = 1;
 /** Undo-close stack, in-memory only (cleared implicitly on app quit). */
@@ -728,6 +738,8 @@ function closeTab(i: number, userInitiated = true) {
         startCmd: leaf?.startCmd,
         scroll: captureScroll(pane),
         wasLastInTab: true,
+        tabIdx: i,
+        tabTitle: t.title,
       });
     }
   }
@@ -792,6 +804,8 @@ function closeFocused() {
       startCmd: leaf?.startCmd,
       scroll: captureScroll(pane),
       wasLastInTab: next === null,
+      tabIdx: activeTabIdx,
+      tabTitle: t.title,
     });
   }
   pane?.dispose();
@@ -822,9 +836,11 @@ function undoClose() {
     t.title = item.title;
     renderChrome();
   } else {
+    const home = tabs[item.tabIdx];
+    if (home && home.title === item.tabTitle) switchTab(item.tabIdx);
     splitFocused("h", item.cwd);
     const t = activeTab();
-    if (t) t.layout = updateLeaf(t.layout, t.focused, { name: item.title });
+    if (t) t.layout = updateLeaf(t.layout, t.focused, { name: item.title, startCmd: item.startCmd });
   }
   const pane = focusedPane();
   if (!pane) return;
@@ -928,15 +944,20 @@ function globalSearch(q: string): { results: PaneHits[]; truncated: boolean } {
   const results: PaneHits[] = [];
   let total = 0;
   let truncated = false;
+  const t0 = Date.now();
   outer: for (let tabIdx = 0; tabIdx < tabs.length; tabIdx++) {
     const t = tabs[tabIdx];
     for (const paneId of paneIds(t.layout)) {
+      if (Date.now() - t0 > 100) {
+        truncated = true;
+        break outer;
+      }
       const pane = panes.get(paneId);
       if (!pane) continue;
       const b = pane.term.buffer.active;
-      const hits = searchLines((i) => b.getLine(i)?.translateToString(true) ?? "", b.baseY + pane.term.rows, q, 50);
+      const { hits, stopped } = searchLines((i) => b.getLine(i)?.translateToString(true) ?? "", b.baseY + pane.term.rows, q, 50);
       if (hits.length === 0) continue;
-      if (hits.length === 50) truncated = true;
+      if (stopped) truncated = true;
       const room = 200 - total;
       if (room <= 0) {
         truncated = true;
@@ -2073,6 +2094,7 @@ async function boot() {
     });
     try {
       getCurrentWindow().onCloseRequested(() => {
+        invoke("tray_update", { win: WIN.win, items: [] }).catch(() => {});
         for (const p of panes.values()) p.dispose();
       });
     } catch {}

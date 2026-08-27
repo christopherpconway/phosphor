@@ -21,3 +21,13 @@ export function matchTrigger(triggers: Trigger[], lastLine: string): Trigger | n
   }
   return null;
 }
+
+/** Scan every line of a chunk (bounded to that chunk, no scrollback) and
+ *  return the first trigger hit, checking lines in order. */
+export function matchChunk(triggers: Trigger[], chunkText: string): Trigger | null {
+  for (const line of chunkText.split("\n")) {
+    const hit = matchTrigger(triggers, line);
+    if (hit) return hit;
+  }
+  return null;
+}

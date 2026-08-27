@@ -18,6 +18,7 @@ export class GlobalSearchOverlay {
   private rows: Row[] = [];
   private sel = 0;
   private _open = false;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private query: (q: string) => { results: PaneHits[]; truncated: boolean };
   private jumpTo: (tabIdx: number, paneId: number, q: string) => void;
 
@@ -43,7 +44,11 @@ export class GlobalSearchOverlay {
 
     this.input.addEventListener("input", () => {
       this.sel = 0;
-      this.render();
+      if (this.debounceTimer !== null) clearTimeout(this.debounceTimer);
+      this.debounceTimer = setTimeout(() => {
+        this.debounceTimer = null;
+        this.render();
+      }, 150);
     });
     this.input.addEventListener("keydown", (e) => {
       e.stopPropagation();

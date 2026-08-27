@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { popClosed, pushClosed, serializeScrollback } from "../src/undoclose.ts";
 
-const item = (t: string) => ({ title: t, scroll: "", wasLastInTab: false }) as any;
+const item = (t: string) => ({ title: t, scroll: "", wasLastInTab: false, tabIdx: 0, tabTitle: t }) as any;
 
 test("stack caps at 5, oldest dropped, LIFO pop", () => {
   let s: any[] = [];

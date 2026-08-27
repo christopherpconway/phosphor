@@ -9,6 +9,12 @@ export interface ClosedPane {
   startCmd?: string;
   scroll: string;
   wasLastInTab: boolean;
+  /** Tab index the pane lived in at close time, so undo restores into the
+   *  same space instead of always the current one. */
+  tabIdx: number;
+  /** Tab's title at close time, to confirm tabIdx still points at the same
+   *  space before restoring into it (a space may have moved or closed). */
+  tabTitle: string;
 }
 
 export function pushClosed(stack: ClosedPane[], item: ClosedPane, cap = 5): ClosedPane[] {

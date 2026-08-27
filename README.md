@@ -89,7 +89,7 @@ If you use Claude Code's own hooks, wiring a `Notification` hook (for permission
 
 ## Snippets
 
-Right-click a pane with text selected and choose "Save selection as snippet…" to keep it. Snippets live in the SNIPPETS cockpit widget: the 10 pinned ones sit there by default, type to search the full library by name first (falling back to a match inside the snippet's own text), and Enter or a click inserts the snippet at the focused pane's prompt. It never runs on its own, and a multi-line snippet goes through the same paste-preview guard as a normal paste.
+Right-click a pane with text selected and choose "Save selection as snippet…" to keep it. Snippets live in the SNIPPETS cockpit widget: the 10 pinned ones sit there by default, type to search the full library by name first (falling back to a match inside the snippet's own text), and Enter or a click inserts the snippet at the focused pane's prompt. It never runs on its own, and a multi-line snippet goes through the same paste-preview guard as a normal paste: with PASTE GUARD off (the default), a multi-line snippet's interior newlines execute as they would in any paste; the guard previews them when enabled.
 
 The full library opens as a BIOS-style overlay (command palette entry SNIPPET LIBRARY, or the "open library…" row at the bottom of the widget): browse everything, star up to 10 to pin them, or add and edit snippets by hand. Snippets are saved to disk and survive a restart.
 

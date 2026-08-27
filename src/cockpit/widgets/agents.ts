@@ -33,7 +33,7 @@ export function agentRows(
 ): AttentionRow[] {
   const rows: AttentionRow[] = [];
   for (const p of all) {
-    if (p.state === "idle" && isShell(p.fgProcess)) continue;
+    if (p.state === "idle" && (p.fgProcess === "" || isShell(p.fgProcess))) continue;
     const d = describe(p.paneId);
     if (!d) continue;
     rows.push({
