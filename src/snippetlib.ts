@@ -135,6 +135,7 @@ export class SnippetLib {
       }
       row.addEventListener("click", () => {
         this.focus = i;
+        this.pendingDeleteId = null;
         this.renderList();
       });
       row.addEventListener("dblclick", () => this.insertFocused());
@@ -154,6 +155,11 @@ export class SnippetLib {
     // The form's inputs own their own keydown listeners (bubble phase, fired
     // after this capture-phase one returns); step aside so typing works.
     if (this.mode === "form") return;
+
+    // Overlay is modal: every key is ours while open, or it falls through to
+    // the terminal underneath (ConfigScreen.onKeydown does the same).
+    e.preventDefault();
+    e.stopPropagation();
 
     const items = this.orderedSnippets();
     const focused = items[this.focus];
@@ -208,10 +214,8 @@ export class SnippetLib {
         }
         break;
       default:
-        return;
+        break;
     }
-    e.preventDefault();
-    e.stopPropagation();
   }
 
   private openForm(existing: Snippet | null): void {
