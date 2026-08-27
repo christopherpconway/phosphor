@@ -16,7 +16,7 @@ test("unknown and duplicate ids dropped, missing appended to default zone", () =
   assert.deepEqual(l.zone.top, ["globe"]);
   assert.deepEqual(l.zone.tabs, ["spaces"]);
   assert.deepEqual(l.zone.left, ["clock", "clockmini", "hwinfo", "cpu", "memory", "disk", "tokens", "timer", "stopwatch", "countdown", "procs"]);
-  assert.deepEqual(l.zone.right, ["netstatus", "radar", "traffic"]);
+  assert.deepEqual(l.zone.right, ["agents", "netstatus", "radar", "traffic"]);
   assert.deepEqual(l.zone.bottom, ["files", "keyboard", "logtail", "statusbar", "shortcuts"]);
   assert.equal(l.enabled.globe, false);
   assert.equal(l.enabled.cpu, true);

@@ -282,6 +282,13 @@ body[data-mode="cockpit"] #cockpit[data-sidebars="none"] { grid-template-columns
 .ck-procs td:first-child, .ck-procs th:first-child { width: 22%; }
 .ck-procs td:last-child, .ck-procs th:last-child { width: 22%; text-align: right; }
 
+.ck-agents { max-height: 200px; overflow-y: auto; }
+.ck-agent-row { display: flex; gap: 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; }
+.ck-agent-row:hover { background: var(--ck-border, #123); }
+.ck-agent-glyph { width: 1em; opacity: 0.7; }
+.ck-agent-glyph.accent { opacity: 1; color: var(--ck-accent, #0af); }
+.ck-line.dim { opacity: 0.5; }
+
 .ck-tree { max-height: 200px; overflow-y: auto; outline: none; }
 .ck-treerow { display: flex; gap: 4px; padding: 1px 4px; white-space: nowrap; cursor: pointer; }
 .ck-treerow.sel, .ck-treerow:hover { background: var(--ck-border, #123); }

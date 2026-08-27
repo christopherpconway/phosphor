@@ -10,6 +10,7 @@ import { createHwInfo } from "./widgets/hwinfo.ts";
 import { createCpuPerCore } from "./widgets/cpu.ts";
 import { createMemoryMatrix } from "./widgets/memory.ts";
 import { createProcs } from "./widgets/procs.ts";
+import { createAgents, type AttentionRow } from "./widgets/agents.ts";
 import { createNetStatus } from "./widgets/netstatus.ts";
 import { createFsTree, type FsTreeWidget } from "./widgets/fstree.ts";
 import { createSpaces, type SpaceInfo, type SpacesWidget } from "./widgets/spaces.ts";
@@ -32,6 +33,8 @@ export interface WidgetDeps {
   reorderSpace(from: number, to: number): void;
   openSpaceMenu(i: number, x: number, y: number): void;
   addSpace(): void;
+  getAttention(): AttentionRow[];
+  jumpToPane(paneId: number): void;
 }
 
 /** Marks a widget's drag handle: its panel header if present, else the root.
@@ -75,6 +78,9 @@ export function buildWidget(id: string, deps: WidgetDeps): Widget {
       break;
     case "procs":
       w = createProcs();
+      break;
+    case "agents":
+      w = createAgents({ getRows: deps.getAttention, jump: deps.jumpToPane });
       break;
     case "netstatus":
       w = createNetStatus();

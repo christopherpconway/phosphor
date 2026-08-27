@@ -17,6 +17,7 @@ import {
 import { searchTimeZones, tzOffsetLabel } from "./widgets/clock.ts";
 import { defaultCountdownTarget, parseCountdownTarget, parseDuration } from "./widgets/timers.ts";
 import type { FsTreeWidget } from "./widgets/fstree.ts";
+import type { AttentionRow } from "./widgets/agents.ts";
 import type { SpaceInfo, SpacesWidget } from "./widgets/spaces.ts";
 import type { BottomBar } from "./clock.ts";
 
@@ -35,6 +36,8 @@ export interface CockpitDeps {
   reorderSpace(from: number, to: number): void;
   openSpaceMenu(i: number, x: number, y: number): void;
   addSpace(): void;
+  getAttention(): AttentionRow[];
+  jumpToPane(paneId: number): void;
 }
 
 const ZONE_EL: Record<string, string> = {

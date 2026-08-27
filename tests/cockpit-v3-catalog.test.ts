@@ -22,7 +22,7 @@ test("keyboard and clockmini default off, everything else on", () => {
   assert.equal(l.enabled.keyboard, false);
   assert.equal(l.enabled.clockmini, false);
   assert.equal(l.enabled.cpu, true);
-  assert.equal(WIDGET_IDS.length, 21);
+  assert.equal(WIDGET_IDS.length, 22);
 });
 
 test("an explicitly stored true beats the default-off", () => {

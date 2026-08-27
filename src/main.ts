@@ -54,6 +54,7 @@ import { sanitizeVisual, type SavedVisual } from "./cockpit/visualcfg.ts";
 import { CONFIGS_KEY, configNames, sanitizeStore, withConfig, withoutConfig, type ConfigStore } from "./configs.ts";
 import { oscUrlToPath } from "./cockpit/files.ts";
 import { initCockpit, type Cockpit } from "./cockpit/cockpit.ts";
+import { agentRows } from "./cockpit/widgets/agents.ts";
 import { DomLayer } from "./cockpit/domrender.ts";
 import { sound } from "./cockpit/sound.ts";
 import { ConfigScreen } from "./cockpit/configscreen.ts";
@@ -1557,6 +1558,20 @@ const cockpit = initCockpit(
     reorderSpace: reorderTabs,
     openSpaceMenu: (i, x, y) => openTabMenu(i, x, y),
     addSpace: () => newTab(),
+    getAttention: () =>
+      !visual.ck.attention.enabled ? [] : agentRows(attention.all(), (paneId) => {
+        const tabIdx = tabs.findIndex((t) => paneIds(t.layout).includes(paneId));
+        if (tabIdx === -1) return null;
+        const leaf = findLeaf(tabs[tabIdx].layout, paneId);
+        return { space: tabs[tabIdx].title, name: leaf?.name ?? attention.get(paneId)?.fgProcess ?? "pane" };
+      }),
+    jumpToPane: (paneId) => {
+      const tabIdx = tabs.findIndex((t) => paneIds(t.layout).includes(paneId));
+      if (tabIdx !== -1) {
+        switchTab(tabIdx);
+        focusPane(paneId);
+      }
+    },
   },
   () => visual.ck,
   (patch) => { Object.assign(visual.ck, patch); saveVisual(); cockpit.relayout(); },
