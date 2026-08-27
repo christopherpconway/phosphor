@@ -1,4 +1,5 @@
 import { plainTextInput } from "./textinput.ts";
+import { createAttentionStore } from "./attention/store.ts";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { CanvasAddon } from "@xterm/addon-canvas";
@@ -208,7 +209,17 @@ class Pane {
       } else if (mark === "C") {
         this.atPrompt = false;
         this.inputStart = null;
+      } else if (mark === "D") {
+        attention.apply({ kind: "cmd-done", paneId: this.id }, Date.now());
       }
+      return true;
+    });
+    this.term.onBell(() => attention.apply({ kind: "bell", paneId: this.id }, Date.now()));
+    this.term.onTitleChange((t) =>
+      attention.apply({ kind: "title", paneId: this.id, title: t }, Date.now()),
+    );
+    this.term.parser.registerOscHandler(9, (data) => {
+      attention.apply({ kind: "osc9", paneId: this.id, text: data.slice(0, 120) }, Date.now());
       return true;
     });
     this.term.onData((data) => {
@@ -336,6 +347,10 @@ const panes = new Map<number, Pane>();
 let nextPaneId = 1;
 
 const activeTab = (): Tab | undefined => tabs[activeTabIdx];
+const attention = createAttentionStore({
+  // Focused means: the focused pane of the active space, in a focused window.
+  isFocused: (id) => activeTab()?.focused === id && document.hasFocus(),
+});
 const focusedPane = (): Pane | undefined => {
   const t = activeTab();
   return t ? panes.get(t.focused) : undefined;
@@ -594,6 +609,7 @@ function switchTab(i: number) {
     pane.activity = false;
     pane.term.focus();
   }
+  attention.apply({ kind: "focus", paneId: t.focused }, Date.now());
   scheduleSave();
 }
 
@@ -613,6 +629,7 @@ function closeTab(i: number) {
   for (const id of paneIds(t.layout)) {
     panes.get(id)?.dispose();
     panes.delete(id);
+    attention.apply({ kind: "closed", paneId: id }, Date.now());
   }
   tabs.splice(i, 1);
   if (tabs.length === 0) {
@@ -638,6 +655,7 @@ function focusPane(id: number) {
     pane.activity = false;
     pane.term.focus();
   }
+  attention.apply({ kind: "focus", paneId: id }, Date.now());
   renderChrome();
 }
 
@@ -661,6 +679,7 @@ function closeFocused() {
   const next = closePane(t.layout, id);
   panes.get(id)?.dispose();
   panes.delete(id);
+  attention.apply({ kind: "closed", paneId: id }, Date.now());
   if (next === null) {
     closeTab(activeTabIdx);
     return;
