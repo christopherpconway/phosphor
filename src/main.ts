@@ -514,7 +514,7 @@ function renderChrome() {
             spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
         })),
   );
-  setAttention(attention.attentionCount());
+  setAttention(visual.ck.attention.enabled ? attention.attentionCount() : 0);
   // Not `cockpit?.` : renderAll can run before that const initializes, and
   // optional chaining does not save you from the temporal dead zone.
   cockpitRef?.refreshSpaces();
