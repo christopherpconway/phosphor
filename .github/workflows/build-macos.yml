@@ -1,0 +1,65 @@
+name: build-macos
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to upload the built bundle to (e.g. v0.4.0). Empty = artifacts only."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  macos-universal:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build
+        run: |
+          npm ci
+          npm run tauri build -- --target universal-apple-darwin
+
+      # Release assets are the real destination and do not count against the
+      # Actions artifact storage quota (which locked builds out twice on
+      # 2026-08-22/23 even after the backlog was deleted).
+      - name: Upload bundle to release
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ inputs.release_tag }}" \
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg \
+            --clobber --repo "${{ github.repository }}"
+
+      - uses: actions/upload-artifact@v4
+        # Convenience copy only; a stale storage-quota snapshot must not fail
+        # the build (the release upload above is the one that matters).
+        continue-on-error: true
+        with:
+          name: phosphor-macos-universal
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          # These bundles are unsigned and the private-repo artifact quota is
+          # small; without expiry they pile up and block new uploads
+          # (see build-linux.yml, 2026-08-22).
+          retention-days: 7
+          # Replace the previous build's artifact of the same name instead of
+          # erroring, so re-runs don't leave orphans counting against quota.
+          overwrite: true

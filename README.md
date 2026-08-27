@@ -24,7 +24,7 @@ Under the glow, Phosphor is a real terminal: a Rust backend runs your actual she
 
 ## Getting started
 
-**macOS:** download the `.dmg` from Releases, open it, and drag Phosphor to Applications.
+**macOS:** download the `.dmg` from Releases, open it, and drag Phosphor to Applications. It's a universal build, so it runs natively on both Intel and Apple Silicon.
 
 **Linux (Fedora, Debian, and friends):** grab the `.rpm`, `.deb`, or AppImage from Releases. On Fedora: `sudo dnf install ./phosphor-*.rpm` (dependencies install automatically).
 
@@ -35,6 +35,13 @@ npm install
 npm run tauri dev      # development app with hot reload
 npm test               # unit tests
 npm run tauri build    # release .app + .dmg (macOS)
+```
+
+To build the universal macOS binary yourself instead of the single-arch default:
+
+```
+rustup target add x86_64-apple-darwin aarch64-apple-darwin
+npm run tauri build -- --target universal-apple-darwin
 ```
 
 ## The two looks
