@@ -764,13 +764,14 @@ function focusPane(id: number) {
   renderChrome();
 }
 
-function splitFocused(dir: "h" | "v") {
+function splitFocused(dir: "h" | "v", cwdOverride?: string) {
   const t = activeTab();
   if (!t) return;
   const from = findLeaf(t.layout, t.focused);
-  const pane = makePane(from?.cwd);
+  const cwd = cwdOverride ?? from?.cwd;
+  const pane = makePane(cwd);
   t.layout = splitPane(t.layout, t.focused, dir, pane.id);
-  if (from?.cwd) t.layout = updateLeaf(t.layout, pane.id, { cwd: from.cwd });
+  if (cwd) t.layout = updateLeaf(t.layout, pane.id, { cwd });
   t.focused = pane.id;
   doRender();
   pane.term.focus();
@@ -821,9 +822,9 @@ function undoClose() {
     t.title = item.title;
     renderChrome();
   } else {
-    splitFocused("h");
+    splitFocused("h", item.cwd);
     const t = activeTab();
-    if (t && item.cwd) t.layout = updateLeaf(t.layout, t.focused, { cwd: item.cwd });
+    if (t) t.layout = updateLeaf(t.layout, t.focused, { name: item.title });
   }
   const pane = focusedPane();
   if (!pane) return;
