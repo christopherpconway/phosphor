@@ -8,6 +8,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -366,6 +367,33 @@ attention.onChange(() => {
   const n = attention.attentionCount();
   if (visual.ck.attention.sound && n > prevAttentionCount) sound.attention();
   prevAttentionCount = n;
+});
+
+function pushTray() {
+  if (!tauriAlive) return;
+  const ck = visual.ck.attention;
+  const items = !ck.enabled || !ck.tray
+    ? []
+    : attention.all()
+        .filter((p) => p.state === "needs-input" || p.state === "done")
+        .map((p) => {
+          const tabIdx = tabs.findIndex((t) => paneIds(t.layout).includes(p.paneId));
+          const t = tabs[tabIdx];
+          const leaf = t ? findLeaf(t.layout, p.paneId) : null;
+          const name = leaf?.name ?? p.fgProcess ?? "pane";
+          const what = p.message || (p.state === "done" ? "finished" : "needs input");
+          return { id: String(p.paneId), label: `${t?.title ?? "?"} / ${name}: ${what}` };
+        });
+  invoke("tray_update", { win: WIN.win, items }).catch(() => {});
+}
+attention.onChange(pushTray);
+
+listen<{ id: string }>("tray-jump", (e) => {
+  const paneId = Number(e.payload.id);
+  const tabIdx = tabs.findIndex((t) => paneIds(t.layout).includes(paneId));
+  if (tabIdx === -1) return;
+  switchTab(tabIdx);
+  focusPane(paneId);
 });
 const focusedPane = (): Pane | undefined => {
   const t = activeTab();

@@ -10,7 +10,9 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, State};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::TrayIconBuilder;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 struct Session {
     master: Box<dyn MasterPty + Send>,
@@ -434,11 +436,64 @@ fn save_inbox_file(app: AppHandle, name: String, bytes: Vec<u8>) -> Result<Strin
     Ok(path.to_string_lossy().into_owned())
 }
 
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+struct TrayItem {
+    id: String,
+    label: String,
+}
+
+#[derive(Default)]
+struct TrayState(Mutex<HashMap<String, Vec<TrayItem>>>); // window label -> items
+
+fn rebuild_tray(app: &AppHandle, state: &TrayState) {
+    let guard = state.0.lock().unwrap();
+    let total: usize = guard.values().map(|v| v.len()).sum();
+    let menu = Menu::new(app).unwrap();
+    for (win, items) in guard.iter() {
+        for it in items {
+            // Menu item id carries the routing: "<window label>::<pane id>".
+            let mi = MenuItem::with_id(app, format!("{win}::{}", it.id), &it.label, true, None::<&str>).unwrap();
+            let _ = menu.append(&mi);
+        }
+    }
+    if total == 0 {
+        let mi = MenuItem::with_id(app, "none", "No pane needs attention", false, None::<&str>).unwrap();
+        let _ = menu.append(&mi);
+    }
+    if let Some(tray) = app.tray_by_id("phosphor-tray") {
+        let _ = tray.set_menu(Some(menu));
+        let _ = tray.set_title(if total > 0 { Some(format!("◉ {total}")) } else { None::<String> });
+    }
+}
+
+#[tauri::command]
+fn tray_update(app: AppHandle, state: State<TrayState>, win: String, items: Vec<TrayItem>) {
+    state.0.lock().unwrap().insert(win, items);
+    rebuild_tray(&app, &state);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(PtyState::default())
+        .manage(TrayState::default())
+        .setup(|app| {
+            TrayIconBuilder::with_id("phosphor-tray")
+                .icon(app.default_window_icon().unwrap().clone())
+                .icon_as_template(true)
+                .on_menu_event(|app, event| {
+                    let id = event.id().0.clone();
+                    if let Some((win, pane)) = id.split_once("::") {
+                        if let Some(w) = app.get_webview_window(win) {
+                            let _ = w.set_focus();
+                            let _ = w.emit("tray-jump", serde_json::json!({ "id": pane }));
+                        }
+                    }
+                })
+                .build(app)?;
+            Ok(())
+        })
         // Tauri's default menu carries File > Close Window on Cmd+W, which
         // fires alongside the app's own Cmd+W (close pane); a keydown
         // preventDefault cannot stop a native accelerator. Build the menu
@@ -486,6 +541,7 @@ pub fn run() {
             workspace_quarantine,
             smart_paste,
             save_inbox_file,
+            tray_update,
             stats::stats_stream,
             stats::net_connections,
             stats::fs_list,
