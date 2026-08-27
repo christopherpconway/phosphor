@@ -4,7 +4,7 @@ import { DEFAULT_LAYOUT, sanitizeWidgets, type WidgetLayout, type Zone } from ".
 export type Mode = "crt" | "cockpit";
 
 export const SEGMENT_IDS = [
-  "brand", "time", "date", "up", "bat", "lan", "ts", "wan", "wifi", "cfg",
+  "brand", "time", "date", "up", "bat", "lan", "ts", "wan", "wifi", "cfg", "att",
 ] as const;
 export type SegmentId = (typeof SEGMENT_IDS)[number];
 

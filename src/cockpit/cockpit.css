@@ -317,6 +317,14 @@ body[data-mode="cockpit"] #cockpit[data-sidebars="none"] { grid-template-columns
 .ck-space-add:hover { opacity: 1; }
 .ck-space.is-active { background: var(--ck-accent, #0af); color: #000; }
 .ck-space.has-activity::after { content: " ●"; opacity: 0.7; }
+.ck-att {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--ck-accent, #0af);
+}
 .ck-space.is-dragging { opacity: 0.5; outline: 1px dashed var(--ck-accent, #0af); }
 
 .ck-keyboard { display: flex; flex-direction: column; gap: 3px; }
@@ -357,6 +365,8 @@ body[data-mode="cockpit"] #cockpit[data-sidebars="none"] { grid-template-columns
 
 .ck-alert { color: var(--ck-warn, #f80); font-weight: bold; }
 .ck-alert.off { opacity: 0.25; }
+.ck-att-on { color: var(--ck-accent, #0af); font-weight: bold; }
+.ck-att-off { opacity: 0.4; }
 
 .ck-tok-bars { display: flex; align-items: flex-end; gap: 2px; height: 34px; margin-top: 5px; }
 .ck-tok-bars i { flex: 1; background: var(--ck-track, rgba(255, 255, 255, 0.12)); min-height: 2px; }

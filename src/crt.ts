@@ -24,6 +24,7 @@ export interface TabInfo {
   title: string;
   active: boolean;
   activity: boolean;
+  attention: boolean;
 }
 
 export interface TabHit {
@@ -602,7 +603,7 @@ export class CrtRenderer {
           ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
           ctx.fillStyle = this.tintCss(0.85);
         }
-        const dot = tab.activity && !tab.active ? "● " : "";
+        const dot = tab.attention && !tab.active ? "● " : tab.activity && !tab.active ? "○ " : "";
         let title = dot + tab.title;
         while (title.length > 3 && ctx.measureText(title).width > w - 34 * dprC) {
           title = title.slice(0, -1);

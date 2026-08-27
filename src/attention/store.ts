@@ -42,6 +42,14 @@ export interface AttentionStore {
 
 const ATTENTION: readonly AttentionState[] = ["needs-input", "done"];
 
+/** True when any of the given panes currently holds attention. */
+export function spaceAttention(
+  paneIds: number[],
+  get: (id: number) => PaneAttention | undefined,
+): boolean {
+  return paneIds.some((id) => ATTENTION.includes(get(id)?.state as AttentionState));
+}
+
 export function createAttentionStore(opts: {
   isFocused(paneId: number): boolean;
 }): AttentionStore {

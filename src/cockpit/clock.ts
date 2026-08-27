@@ -46,6 +46,14 @@ export function setCfgLabel(label: string): void {
   cfgLabel = label;
 }
 
+// Same module-level pattern as cfgLabel: the attention count comes from the
+// store's onChange -> renderChrome flow in main.ts, not from Stats, so it
+// needs its own setter rather than riding SegCtx.
+let attCount = 0;
+export function setAttention(n: number): void {
+  attCount = n;
+}
+
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 export const SEGMENTS: Record<SegmentId, (c: SegCtx) => string | null> = {
@@ -66,6 +74,7 @@ export const SEGMENTS: Record<SegmentId, (c: SegCtx) => string | null> = {
   wifi: (c) =>
     c.stats?.wifiSsid && c.stats.wifiSsid !== "<redacted>" ? `WIFI ${c.stats.wifiSsid}` : null,
   cfg: (c) => (c.cfg ? c.cfg : null),
+  att: () => `ATTN ${attCount}`,
 };
 
 export class BottomBar {
@@ -112,6 +121,7 @@ export class BottomBar {
       const span = document.createElement("span");
       span.textContent = text;
       if (item.id === "brand") span.className = "ck-brand";
+      if (item.id === "att") span.className = attCount > 0 ? "ck-att-on" : "ck-att-off";
       this.root.appendChild(span);
     }
     // Alerts are not a configurable segment: when something crosses a

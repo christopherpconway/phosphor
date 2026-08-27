@@ -1,5 +1,5 @@
 import { plainTextInput } from "./textinput.ts";
-import { createAttentionStore } from "./attention/store.ts";
+import { createAttentionStore, spaceAttention } from "./attention/store.ts";
 import { classifyClaude } from "./attention/claude.ts";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -44,7 +44,7 @@ import {
   type SpaceSpec,
   type WorkspaceFile,
 } from "./workspace.ts";
-import { setCfgLabel } from "./cockpit/clock.ts";
+import { setAttention, setCfgLabel } from "./cockpit/clock.ts";
 import { needsPasteConfirm, pastePreview, shellQuote, stripTrailingNewlines } from "./textutils.ts";
 import { Palette, type PaletteItem } from "./palette.ts";
 import { sanitizeCockpit, sanitizeMode, type CockpitCfg, type Mode } from "./cockpit/config.ts";
@@ -359,6 +359,7 @@ const attention = createAttentionStore({
   // Focused means: the focused pane of the active space, in a focused window.
   isFocused: (id) => activeTab()?.focused === id && document.hasFocus(),
 });
+attention.onChange(() => renderChrome());
 const focusedPane = (): Pane | undefined => {
   const t = activeTab();
   return t ? panes.get(t.focused) : undefined;
@@ -501,8 +502,10 @@ function renderChrome() {
           active: i === activeTabIdx,
           activity:
             paneIds(tab.layout).some((id) => panes.get(id)?.activity) && i !== activeTabIdx,
+          attention: spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
         })),
   );
+  setAttention(attention.attentionCount());
   // Not `cockpit?.` : renderAll can run before that const initializes, and
   // optional chaining does not save you from the temporal dead zone.
   cockpitRef?.refreshSpaces();
@@ -1509,6 +1512,7 @@ const cockpit = initCockpit(
         active: i === activeTabIdx,
         activity:
           paneIds(tab.layout).some((id) => panes.get(id)?.activity) && i !== activeTabIdx,
+        attention: spaceAttention(paneIds(tab.layout), (id) => attention.get(id)),
       })),
     selectSpace: (i) => switchTab(i),
     reorderSpace: reorderTabs,

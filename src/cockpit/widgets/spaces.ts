@@ -6,6 +6,7 @@ export interface SpaceInfo {
   title: string;
   active: boolean;
   activity: boolean;
+  attention: boolean;
 }
 
 /** Numbered label; blank titles fall back to the index alone. */
@@ -44,7 +45,12 @@ export function createSpaces(deps: {
       tab.className = "ck-space";
       tab.classList.toggle("is-active", s.active);
       tab.classList.toggle("has-activity", s.activity && !s.active);
-      tab.textContent = spaceLabel(s, i);
+      if (s.attention) {
+        const dot = document.createElement("span");
+        dot.className = "ck-att";
+        tab.append(dot);
+      }
+      tab.append(document.createTextNode(spaceLabel(s, i)));
       // Set by the pointerdown drag handler below; a completed drag also
       // fires a native click, which must not also select the space.
       let dragMoved = false;
