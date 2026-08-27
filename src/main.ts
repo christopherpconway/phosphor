@@ -1771,6 +1771,24 @@ async function boot() {
 
   if (restored && tauriAlive) {
     setInterval(refreshCwds, 30000);
+    const pollForeground = async () => {
+      const t = activeTab();
+      if (!t) return;
+      // Poll every pane in the window, not just the active space; a background
+      // space is exactly where attention matters.
+      const ids = tabs.flatMap((tab) => paneIds(tab.layout)).filter((id) => panes.get(id)?.alive);
+      if (ids.length === 0) return;
+      try {
+        const fg = await invoke<Record<string, string>>("pty_foreground", {
+          ids: ids.map((id) => ptyId(id)),
+        });
+        for (const id of ids) {
+          const comm = fg[String(ptyId(id))];
+          if (comm) attention.apply({ kind: "fg", paneId: id, process: comm }, Date.now());
+        }
+      } catch {}
+    };
+    setInterval(pollForeground, 2000);
     window.addEventListener("beforeunload", () => {
       invoke("workspace_save", { json: JSON.stringify(currentWorkspace(), null, 2), ...wsArgs() }).catch(
         () => {},

@@ -358,6 +358,71 @@ fn smart_paste(app: AppHandle) -> Result<PasteResult, String> {
     }
 }
 
+/// Deepest descendant of `root` in a (pid, ppid, comm) snapshot. Ties break
+/// toward the highest pid (the newest process, most likely the foreground).
+fn deepest_descendant(procs: &[(u32, u32, String)], root: u32) -> Option<String> {
+    use std::collections::HashMap as Map;
+    let mut children: Map<u32, Vec<u32>> = Map::new();
+    let mut comm: Map<u32, &str> = Map::new();
+    for (pid, ppid, c) in procs {
+        children.entry(*ppid).or_default().push(*pid);
+        comm.insert(*pid, c);
+    }
+    comm.get(&root)?;
+    let mut best = (0usize, root);
+    let mut stack = vec![(0usize, root)];
+    while let Some((depth, pid)) = stack.pop() {
+        if depth > best.0 || (depth == best.0 && pid > best.1) {
+            best = (depth, pid);
+        }
+        if let Some(kids) = children.get(&pid) {
+            for k in kids {
+                stack.push((depth + 1, *k));
+            }
+        }
+    }
+    comm.get(&best.1).map(|c| {
+        c.rsplit('/').next().unwrap_or(c).to_string()
+    })
+}
+
+fn ps_snapshot() -> Vec<(u32, u32, String)> {
+    let out = match Command::new("ps").args(["-ax", "-o", "pid=,ppid=,comm="]).output() {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            let pid = it.next()?.parse().ok()?;
+            let ppid = it.next()?.parse().ok()?;
+            let comm = it.collect::<Vec<_>>().join(" ");
+            Some((pid, ppid, comm))
+        })
+        .collect()
+}
+
+/// Foreground-most process per pane pty id. One ps call for the whole batch;
+/// runs on the TS 2s tick, so keep it cheap and never fail the call.
+#[tauri::command]
+fn pty_foreground(state: State<PtyState>, ids: Vec<u32>) -> HashMap<u32, String> {
+    let roots: Vec<(u32, u32)> = {
+        let guard = state.0.lock().unwrap();
+        ids.iter()
+            .filter_map(|id| guard.get(id).and_then(|s| s.child_pid).map(|pid| (*id, pid)))
+            .collect()
+    };
+    if roots.is_empty() {
+        return HashMap::new();
+    }
+    let snap = ps_snapshot();
+    roots
+        .into_iter()
+        .filter_map(|(id, pid)| deepest_descendant(&snap, pid).map(|c| (id, c)))
+        .collect()
+}
+
 #[tauri::command]
 fn save_inbox_file(app: AppHandle, name: String, bytes: Vec<u8>) -> Result<String, String> {
     let safe: String = name
@@ -415,6 +480,7 @@ pub fn run() {
             pty_cwd,
             pty_log_start,
             pty_log_stop,
+            pty_foreground,
             workspace_load,
             workspace_save,
             workspace_quarantine,
@@ -433,6 +499,22 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn deepest_descendant_walks_the_tree() {
+        // (pid, ppid, comm)
+        let procs = vec![
+            (100, 1, "zsh".to_string()),
+            (200, 100, "node".to_string()),
+            (300, 200, "claude".to_string()),
+            (400, 1, "other".to_string()),
+        ];
+        assert_eq!(super::deepest_descendant(&procs, 100), Some("claude".to_string()));
+        // A childless shell returns itself.
+        assert_eq!(super::deepest_descendant(&procs, 400), Some("other".to_string()));
+        // Unknown root: nothing.
+        assert_eq!(super::deepest_descendant(&procs, 999), None);
+    }
+
     #[test]
     fn workspace_file_name_is_per_window_and_safe() {
         assert_eq!(super::workspace_file_name(None), "workspace.json");
