@@ -23,3 +23,12 @@ test("working beats needs-input when both appear (newest wins by order)", () => 
   // The spinner redraws after the box when a turn starts.
   assert.equal(classifyClaude("│ > │\n(esc to interrupt)"), "working");
 });
+
+test("true last-position wins, not first match", () => {
+  // Working marker appears both before and after a needs-input marker; the
+  // true last occurrence (working) must win, not the first working match.
+  assert.equal(
+    classifyClaude("(esc to interrupt)\n│ > │\n(esc to interrupt · 3s)"),
+    "working",
+  );
+});
