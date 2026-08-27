@@ -46,6 +46,10 @@ export function createAttentionStore(opts: {
   isFocused(paneId: number): boolean;
 }): AttentionStore {
   const panes = new Map<number, PaneAttention>();
+  // Tombstones: ids seen in a "closed" event. A late bell or fg for one of
+  // these must not resurrect the pane. Ids are never reused in a window
+  // session, so the set needs no eviction.
+  const closed = new Set<number>();
   const listeners: Array<() => void> = [];
 
   const entry = (id: number): PaneAttention => {
@@ -73,7 +77,10 @@ export function createAttentionStore(opts: {
     apply(e, now) {
       let changed = false;
       if (e.kind === "closed") {
+        closed.add(e.paneId);
         changed = panes.delete(e.paneId);
+      } else if (closed.has(e.paneId)) {
+        return;
       } else {
         const p = entry(e.paneId);
         const holding = ATTENTION.includes(p.state);

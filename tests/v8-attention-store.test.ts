@@ -77,6 +77,19 @@ test("onChange fires once per state change, not per event", () => {
   assert.equal(n, 1);
 });
 
+test("events after closed are ignored, no resurrection", () => {
+  const s = mk();
+  s.apply({ kind: "fg", paneId: 1, process: "claude" }, 1000);
+  s.apply({ kind: "closed", paneId: 1 }, 2000);
+  let n = 0;
+  s.onChange(() => n++);
+  s.apply({ kind: "bell", paneId: 1 }, 3000);
+  s.apply({ kind: "fg", paneId: 1, process: "claude" }, 4000);
+  assert.equal(s.get(1), undefined);
+  assert.equal(s.attentionCount(), 0);
+  assert.equal(n, 0);
+});
+
 test("isShell handles login-dash and paths", () => {
   assert.ok(isShell("-zsh"));
   assert.ok(isShell("/bin/bash"));
