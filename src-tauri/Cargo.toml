@@ -1,8 +1,9 @@
 [package]
 name = "phosphor"
 version = "0.7.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A CRT terminal with a cockpit"
+authors = ["Christopher Conway"]
+license = "MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
