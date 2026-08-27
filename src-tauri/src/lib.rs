@@ -265,6 +265,12 @@ fn workspace_path(app: &AppHandle, name: Option<String>) -> Result<std::path::Pa
     Ok(dir.join(workspace_file_name(name.as_deref())))
 }
 
+fn snippets_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("snippets.json"))
+}
+
 #[tauri::command]
 fn workspace_load(app: AppHandle, name: Option<String>) -> Result<String, String> {
     let path = workspace_path(&app, name)?;
@@ -282,6 +288,34 @@ fn workspace_save(app: AppHandle, json: String, name: Option<String>) -> Result<
 #[tauri::command]
 fn workspace_quarantine(app: AppHandle, name: Option<String>) -> Result<(), String> {
     let path = workspace_path(&app, name)?;
+    if path.exists() {
+        let bad = path.with_file_name(format!("{}.bad-{}", path.file_name().unwrap().to_string_lossy(), now_stamp()));
+        std::fs::rename(&path, bad).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn snippets_load(app: AppHandle) -> Result<String, String> {
+    let path = snippets_path(&app)?;
+    if !path.exists() {
+        return Ok(String::new());
+    }
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn snippets_save(app: AppHandle, json: String) -> Result<(), String> {
+    let path = snippets_path(&app)?;
+    let tmp_path = path.with_file_name("snippets.json.tmp");
+    std::fs::write(&tmp_path, json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn snippets_quarantine(app: AppHandle) -> Result<(), String> {
+    let path = snippets_path(&app)?;
     if path.exists() {
         let bad = path.with_file_name(format!("{}.bad-{}", path.file_name().unwrap().to_string_lossy(), now_stamp()));
         std::fs::rename(&path, bad).map_err(|e| e.to_string())?;
@@ -550,6 +584,9 @@ pub fn run() {
             workspace_load,
             workspace_save,
             workspace_quarantine,
+            snippets_load,
+            snippets_save,
+            snippets_quarantine,
             smart_paste,
             save_inbox_file,
             tray_update,
