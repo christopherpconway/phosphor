@@ -243,6 +243,7 @@ export const FONTS: Record<string, string> = {
   ibmvga: '"IBM VGA", monospace',
   apple2: '"Apple II", monospace',
   wargames: '"WarGames Terminal", monospace',
+  ioskeley: '"Ioskeley Mono", monospace',
   system: "Menlo, monospace",
 };
 
