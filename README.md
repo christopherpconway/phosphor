@@ -53,7 +53,7 @@ Two settings control the appearance, and they're independent:
 | RENDER MODE | RETRO CRT or NEXTGEN | Whether the CRT effects are on. Retro gives you the full tube: curvature, scanlines, glow, flicker, all adjustable. NextGen turns every effect off for a clean, flat, modern look. |
 | COLOR SCHEME | GREEN, AMBER, MODERN, TRON, DRACULA, NORD, GRUVBOX, SOLARIZED, CATPPUCCIN, GOTHAM | The colors. Green and amber tint everything monochrome like a real single-color tube; the others carry full color palettes. |
 
-Any combination works: a flat modern terminal in Dracula is as valid as a heavily curved green CRT. Switching schemes fires a "degauss," a brief magnetic wobble with color separation, like re-magnetizing a real tube. Three retro fonts are bundled (IBM 3270, IBM VGA, Apple II) with an adjustable size.
+Any combination works: a flat modern terminal in Dracula is as valid as a heavily curved green CRT. Switching schemes fires a "degauss," a brief magnetic wobble with color separation, like re-magnetizing a real tube. Four bundled font choices (IBM 3270, IBM VGA, Apple II, Ioskeley Mono) plus the system font, with an adjustable size.
 
 ## Everyday features
 
@@ -79,7 +79,7 @@ Phosphor watches every pane, not just the one you're looking at, so a background
 - **Terminal bell** and **OSC 9** notifications: the two standard ways a program asks for attention; OSC 9's message text is captured and shown.
 - **Shell integration's command-done mark** (OSC 133;D): a background pane's foreground command finishing gets marked done.
 - **A Claude Code classifier** (no config needed): recognizes Claude Code's own spinner and idle-prompt output well enough to tell "working" from "needs input" while it runs in a pane.
-- **Watch triggers**: right-click a pane and add a regex or plain text to watch for; it's checked against just the newest output line, so it never rescans scrollback. An invalid regex re-prompts you inline instead of failing silently. Right-click again to clear a pane's triggers.
+- **Watch triggers**: right-click a pane and add a regex or plain text to watch for; it's checked line by line against each new burst of output as it arrives, so it never rescans scrollback. An invalid regex re-prompts you inline instead of failing silently. Right-click again to clear a pane's triggers.
 
 Any pane holding attention shows up everywhere at once: a badge on its space tab and on the SPACES widget, a row in the AGENTS cockpit widget (click to jump straight to that pane), a live count in the ATTN status bar segment, and a count on the macOS menu bar tray icon, whose menu lists every pane across every open window so you can jump to any of them from one place.
 
@@ -212,4 +212,4 @@ Known cosmetic limits: no hover highlights on the tube, popover menus float undi
 
 ## Font credits
 
-WarGames Terminal font by Michael Walden (https://MW.Rat.bz/wgterm), licensed CC BY-NC-SA 4.0. The NonCommercial term covers this font only. IBM 3270, IBM VGA 8x16, and Apple II PrintChar21 come from the cool-retro-term font collection (free licenses).
+WarGames Terminal font by Michael Walden (https://MW.Rat.bz/wgterm), licensed CC BY-NC-SA 4.0. The NonCommercial term covers this font only. IBM 3270, IBM VGA 8x16, and Apple II PrintChar21 come from the cool-retro-term font collection (free licenses). Ioskeley Mono (Term Nerd Font build) by ahatem (https://github.com/ahatem/IoskeleyMono), an Iosevka configuration styled after Berkeley Mono, licensed SIL OFL 1.1.
