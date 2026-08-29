@@ -11,6 +11,18 @@
 const NO_INK = new Set(["rgba(0, 0, 0, 0)", "transparent", ""]);
 const hasInk = (c: string) => !NO_INK.has(c);
 
+/**
+ * A display:contents element has no box of its own: bg/border/clip never
+ * apply to it, and getBoundingClientRect() always comes back zeroed. Its
+ * children still lay out normally and still need replaying, so drawNode
+ * must not take its usual empty-rect early return for one. This is the
+ * seam that display:contents rows (SHORTCUTS) fell through before, going
+ * missing under one-CRT rasterization.
+ */
+export function shouldWalkChildrenDespiteZeroRect(display: string): boolean {
+  return display === "contents";
+}
+
 export class DomLayer {
   private layer = document.createElement("canvas");
   private lctx = this.layer.getContext("2d")!;
@@ -19,8 +31,15 @@ export class DomLayer {
   private observer = new MutationObserver(() => {
     this.dirty = true;
   });
+  private zones: () => HTMLElement[];
 
-  constructor(private zones: () => HTMLElement[]) {}
+  // Plain field + assignment, not a TS parameter-property constructor: that
+  // shorthand isn't supported by Node's strip-only TS loader, and this file
+  // needs to stay importable so tests can reach the helper above without a
+  // bundler.
+  constructor(zones: () => HTMLElement[]) {
+    this.zones = zones;
+  }
 
   observe(root: HTMLElement) {
     this.observer.observe(root, {
@@ -72,13 +91,10 @@ export class DomLayer {
     alpha *= Number(cs.opacity) || 1;
     if (alpha <= 0.01) return;
 
-    // display:contents generates no box of its own — bg/border/clip never
-    // apply to it, and getBoundingClientRect() always comes back zeroed —
-    // but its children still lay out and still need replaying. Falling
-    // through to the box-only code below would stop here and silently drop
-    // the whole subtree (this is how SHORTCUTS rows, the one place that
-    // grid-participates via display:contents, went missing under one-CRT).
-    if (cs.display === "contents") {
+    // See shouldWalkChildrenDespiteZeroRect: falling through to the
+    // box-only code below would stop here and silently drop the whole
+    // subtree, since a display:contents element's rect is always zero.
+    if (shouldWalkChildrenDespiteZeroRect(cs.display)) {
       for (const node of el.childNodes) {
         if (node.nodeType === Node.TEXT_NODE) {
           this.drawText(node as Text, cs, cr, dpr, alpha);

@@ -9,6 +9,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { COLOR_SCHEMES, SCHEME_IDS } from "../src/crt.ts";
+import { shouldWalkChildrenDespiteZeroRect } from "../src/cockpit/domrender.ts";
 
 function relativeLuma(hex: string): number {
   const n = hex.replace("#", "");
@@ -41,4 +42,20 @@ test("every scheme's accent (cursor) also clears the background", () => {
       `${id}: cursor/background luma delta ${delta.toFixed(3)} is below the ${MIN_LUMA_DELTA} floor (cursor=${s.cursor} bg=${s.background})`,
     );
   }
+});
+
+// Guards the actual fix (the SHORTCUTS row rasterization bug), not the
+// contrast hypothesis ruled out above. domrender.ts's drawNode() normally
+// bails out on an element whose getBoundingClientRect() is zero-sized, but
+// a display:contents element (.ck-shortcuts-row) always reports a zero rect
+// despite laying out its children normally, so that early return used to
+// silently drop the whole subtree. This is the seam that decides whether
+// drawNode walks children anyway instead of taking that early return.
+test("shouldWalkChildrenDespiteZeroRect: contents walks, none and ordinary boxes do not", () => {
+  assert.equal(shouldWalkChildrenDespiteZeroRect("contents"), true);
+  assert.equal(shouldWalkChildrenDespiteZeroRect("none"), false);
+  assert.equal(shouldWalkChildrenDespiteZeroRect("block"), false);
+  assert.equal(shouldWalkChildrenDespiteZeroRect("flex"), false);
+  assert.equal(shouldWalkChildrenDespiteZeroRect("grid"), false);
+  assert.equal(shouldWalkChildrenDespiteZeroRect("inline"), false);
 });
