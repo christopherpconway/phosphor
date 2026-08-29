@@ -71,6 +71,24 @@ export class DomLayer {
     if (cs.display === "none" || cs.visibility === "hidden") return;
     alpha *= Number(cs.opacity) || 1;
     if (alpha <= 0.01) return;
+
+    // display:contents generates no box of its own — bg/border/clip never
+    // apply to it, and getBoundingClientRect() always comes back zeroed —
+    // but its children still lay out and still need replaying. Falling
+    // through to the box-only code below would stop here and silently drop
+    // the whole subtree (this is how SHORTCUTS rows, the one place that
+    // grid-participates via display:contents, went missing under one-CRT).
+    if (cs.display === "contents") {
+      for (const node of el.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          this.drawText(node as Text, cs, cr, dpr, alpha);
+        } else if (node instanceof HTMLElement) {
+          this.drawNode(node, cr, dpr, alpha);
+        }
+      }
+      return;
+    }
+
     const r = el.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
     const ctx = this.lctx;
