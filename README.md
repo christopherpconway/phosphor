@@ -53,7 +53,7 @@ Two settings control the appearance, and they're independent:
 | RENDER MODE | RETRO CRT or NEXTGEN | Whether the CRT effects are on. Retro gives you the full tube: curvature, scanlines, glow, flicker, all adjustable. NextGen turns every effect off for a clean, flat, modern look. |
 | COLOR SCHEME | GREEN, AMBER, MODERN, TRON, DRACULA, NORD, GRUVBOX, SOLARIZED, CATPPUCCIN, GOTHAM | The colors. Green and amber tint everything monochrome like a real single-color tube; the others carry full color palettes. |
 
-Any combination works: a flat modern terminal in Dracula is as valid as a heavily curved green CRT. Switching schemes fires a "degauss," a brief magnetic wobble with color separation, like re-magnetizing a real tube. Four bundled font choices (IBM 3270, IBM VGA, Apple II, Ioskeley Mono) plus the system font, with an adjustable size.
+Any combination works: a flat modern terminal in Dracula is as valid as a heavily curved green CRT. Switching schemes fires a "degauss," a brief magnetic wobble with color separation, like re-magnetizing a real tube. Five bundled font choices (IBM 3270, IBM VGA, Apple II, WarGames Terminal, Ioskeley Mono) plus the system font, with an adjustable size.
 
 ## Everyday features
 
