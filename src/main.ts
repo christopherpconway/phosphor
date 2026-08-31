@@ -993,9 +993,17 @@ function togglePaneLog(pane: Pane) {
     .then((path) => {
       pane.logging = path;
       // the path lands on the clipboard so it's pasteable anywhere
-      navigator.clipboard.writeText(path).catch(() => {});
+      copyText(path);
     })
     .catch(() => {});
+}
+
+// WKWebView silently rejects navigator.clipboard.writeText (read works), so
+// copy goes through the Rust side; the web API stays as a fallback.
+function copyText(text: string) {
+  invoke("clipboard_write_text", { text }).catch(() =>
+    navigator.clipboard.writeText(text).catch(() => {}),
+  );
 }
 
 function insertPaths(pane: Pane, paths: string[]) {
@@ -1076,7 +1084,7 @@ function handleKey(pane: Pane, e: KeyboardEvent): boolean {
     case "copy":
       // With no selection this is not a copy; let the shell have the key.
       if (!pane.term.hasSelection()) return true;
-      navigator.clipboard.writeText(pane.term.getSelection()).catch(() => {});
+      copyText(pane.term.getSelection());
       return false;
     case "clear":
       pane.term.clear();
@@ -1130,8 +1138,8 @@ window.addEventListener(
 );
 
 export const KEY_HINT = isMac
-  ? "Cmd+, settings \u00b7 Cmd+D/Shift+D split \u00b7 Cmd+W close \u00b7 Cmd+T space \u00b7 Cmd+Shift+T presets \u00b7 Shift+Enter newline \u00b7 paste never auto-runs \u00b7 Cmd+Shift+M cockpit \u00b7 Cmd+Ctrl+F fullscreen"
-  : "Ctrl+, settings \u00b7 Ctrl+Shift+D/B split \u00b7 Ctrl+Shift+W close \u00b7 Ctrl+Shift+T space \u00b7 Ctrl+Shift+P presets \u00b7 Alt+1-9 spaces \u00b7 Shift+Enter newline \u00b7 paste never auto-runs";
+  ? "Cmd+, settings \u00b7 Cmd+D/Shift+D split \u00b7 Cmd+W close \u00b7 Cmd+T space \u00b7 Cmd+Shift+T presets \u00b7 Shift+Enter newline \u00b7 Cmd+Shift+M cockpit \u00b7 Cmd+Ctrl+F fullscreen"
+  : "Ctrl+, settings \u00b7 Ctrl+Shift+D/B split \u00b7 Ctrl+Shift+W close \u00b7 Ctrl+Shift+T space \u00b7 Ctrl+Shift+P presets \u00b7 Alt+1-9 spaces \u00b7 Shift+Enter newline";
 
 // ---------- pointer routing through the glass ----------
 
@@ -1504,7 +1512,11 @@ function openPaneMenu(pane: Pane, x: number, y: number) {
   focusPane(pane.id);
   const leaf = findLeaf(t.layout, pane.id);
   paneMenuEl.innerHTML = "";
+  // Capture now: menu interaction can collapse the terminal selection before
+  // the click callback runs (same reason the snippet item captures early).
+  const menuSelection = pane.term.hasSelection() ? pane.term.getSelection() : "";
   paneMenuEl.append(
+    menuItem("Copy", !menuSelection, () => copyText(menuSelection)),
     menuItem("Paste", false, () => smartPaste(pane)),
     menuItem("Split right", false, () => splitFocused("h")),
     menuItem("Split down", false, () => splitFocused("v")),
@@ -1716,6 +1728,8 @@ function refreshVisual() {
   root.setProperty("--ck-fg", theme.foreground);
   root.setProperty("--ck-bg", theme.background);
   root.setProperty("--ck-accent", theme.cursor);
+  // Widgets read the same face the terminal renders in.
+  root.setProperty("--ck-font", FONTS[e.font] ?? FONTS.system);
   root.setProperty("--ck-border", `color-mix(in srgb, ${theme.foreground} 30%, black)`);
   root.setProperty("--ck-panel-bg", `color-mix(in srgb, ${theme.background} 82%, transparent)`);
   for (const pane of panes.values()) {

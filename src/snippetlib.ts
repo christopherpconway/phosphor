@@ -101,7 +101,7 @@ export class SnippetLib {
 
   private renderList(): void {
     this.hintEl.textContent =
-      "ARROWS MOVE  ENTER INSERT  P PIN  E EDIT  N NEW  D DELETE  ESC CLOSE";
+      "↑↓ Move. Enter Insert. P Pin. E Edit. N New. D Delete. ESC Close.";
     this.msgEl.textContent = this.message;
 
     const items = this.orderedSnippets();
@@ -259,7 +259,7 @@ export class SnippetLib {
     nameInput.addEventListener("keydown", onKey);
     codeInput.addEventListener("keydown", onKey);
 
-    this.hintEl.textContent = "CMD+ENTER SAVE  ESC CANCEL";
+    this.hintEl.textContent = "Cmd+Enter Save. ESC Cancel.";
     setTimeout(() => nameInput.focus(), 0);
   }
 

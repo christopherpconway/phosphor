@@ -63,12 +63,15 @@ test("revealPath ignores a path outside the tree", () => {
   assert.equal(revealPath(r, "/elsewhere/deep"), r);
 });
 
-test("only the explicit chord moves the session", () => {
-  assert.equal(treeAction("Enter", false), "insert");
-  assert.equal(treeAction("Enter", true), "cd");
-  assert.equal(treeAction("ArrowRight", false), "expand");
-  assert.equal(treeAction("ArrowLeft", false), "collapse");
-  assert.equal(treeAction("ArrowDown", false), "next");
-  assert.equal(treeAction("ArrowUp", false), "prev");
-  assert.equal(treeAction("x", false), "none");
+test("Enter acts on the selection; the chord inserts (2026-08-31 ruling)", () => {
+  assert.equal(treeAction("Enter", false, true), "cd");
+  assert.equal(treeAction("Enter", false, false), "open");
+  assert.equal(treeAction("Enter", true, true), "insert");
+  assert.equal(treeAction("Enter", true, false), "insert");
+  assert.equal(treeAction("Backspace", false, false), "up");
+  assert.equal(treeAction("ArrowRight", false, true), "expand");
+  assert.equal(treeAction("ArrowLeft", false, true), "collapse");
+  assert.equal(treeAction("ArrowDown", false, false), "next");
+  assert.equal(treeAction("ArrowUp", false, false), "prev");
+  assert.equal(treeAction("x", false, false), "none");
 });

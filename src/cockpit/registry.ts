@@ -1,6 +1,7 @@
 // src/cockpit/registry.ts
 // Widget factories. The v2 panels that survived (traffic, globe, statusbar)
 // stay untouched internally and are wrapped; everything else lives in widgets/.
+import { openPath } from "@tauri-apps/plugin-opener";
 import { NetworkPanel } from "./network.ts";
 import { GlobePanel } from "./globe.ts";
 import { BottomBar } from "./clock.ts";
@@ -123,9 +124,10 @@ export function buildWidget(id: string, deps: WidgetDeps): Widget {
       break;
     case "files":
       w = createFsTree({
-        // Browsing inserts a path; only the explicit chord moves the shell.
+        // Enter cds to a folder / opens a file; Cmd+Enter inserts the path.
         insertPath: (p) => deps.runInShell(`${shellQuote(p)} `),
         cdTo: (p) => deps.runInShell(`cd ${shellQuote(p)}\r`),
+        openPath: (p) => void openPath(p).catch(() => {}),
       });
       break;
     case "traffic": {

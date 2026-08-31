@@ -28,8 +28,8 @@ test("setEnabled flips only the target", () => {
 });
 
 test("cycleZone advances through ZONES order and wraps", () => {
-  const m = cycleZone(DEFAULT_LAYOUT, "statusbar", 1); // bottom -> top (wrap)
-  assert.equal(m.zone.top.at(-1), "statusbar");
+  const m = cycleZone(DEFAULT_LAYOUT, "files", 1); // bottom -> top (wrap)
+  assert.equal(m.zone.top.at(-1), "files");
   const back = cycleZone(DEFAULT_LAYOUT, "cpu", -1); // left -> top
   assert.equal(back.zone.top.at(-1), "cpu");
 });

@@ -462,6 +462,14 @@ fn pty_foreground(state: State<PtyState>, ids: Vec<u32>) -> HashMap<u32, String>
         .collect()
 }
 
+// WKWebView rejects navigator.clipboard.writeText (read works, write doesn't),
+// so copy routes through arboard like paste already does.
+#[tauri::command]
+fn clipboard_write_text(text: String) -> Result<(), String> {
+    let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    cb.set_text(text).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn save_inbox_file(app: AppHandle, name: String, bytes: Vec<u8>) -> Result<String, String> {
     let safe: String = name
@@ -576,6 +584,11 @@ pub fn run() {
                 .maximize()
                 .item(&PredefinedMenuItem::fullscreen(app, None)?)
                 .build()?;
+            // Registering this as the NSApp windows menu is what makes macOS
+            // append the standard items (tiling, Bring All to Front, the open
+            // window list) and honor the Fn+Ctrl+arrow move shortcuts.
+            #[cfg(target_os = "macos")]
+            let _ = window.set_as_windows_menu_for_nsapp();
             MenuBuilder::new(app).items(&[&app_menu, &edit, &window]).build()
         })
         .invoke_handler(tauri::generate_handler![
@@ -594,6 +607,7 @@ pub fn run() {
             snippets_save,
             snippets_quarantine,
             smart_paste,
+            clipboard_write_text,
             save_inbox_file,
             tray_update,
             stats::stats_stream,
@@ -633,6 +647,11 @@ mod tests {
         assert_eq!(super::workspace_file_name(Some("../x")), "workspace.json");
     }
 
+    /// Cargo runs tests concurrently and two of them touch the one real
+    /// pasteboard; they serialize on this or interleave and flake.
+    #[cfg(target_os = "macos")]
+    static PASTEBOARD: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     /// macOS coerces plain text into a file URL ("hello" -> "/hello"); the
     /// furl guard must refuse a text-only clipboard. Touches the real
     /// pasteboard, so it restores what it found.
@@ -641,6 +660,7 @@ mod tests {
     fn text_clipboard_is_not_a_file_path() {
         use std::io::Write;
         use std::process::{Command, Stdio};
+        let _guard = PASTEBOARD.lock().unwrap();
         let saved = Command::new("pbpaste").output().ok().map(|o| o.stdout);
         let mut p = Command::new("pbcopy").stdin(Stdio::piped()).spawn().unwrap();
         p.stdin.take().unwrap().write_all(b"echo PASTE-ONCE").unwrap();
@@ -653,5 +673,26 @@ mod tests {
             }
         }
         assert_eq!(got, None);
+    }
+
+    /// Copy must land on the real pasteboard (the whole point of routing it
+    /// through arboard). Touches the real pasteboard, so it restores what it
+    /// found.
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn clipboard_write_text_round_trips() {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let _guard = PASTEBOARD.lock().unwrap();
+        let saved = Command::new("pbpaste").output().ok().map(|o| o.stdout);
+        super::clipboard_write_text("COPY-ONCE".into()).unwrap();
+        let got = Command::new("pbpaste").output().unwrap().stdout;
+        if let Some(bytes) = saved {
+            if let Ok(mut p) = Command::new("pbcopy").stdin(Stdio::piped()).spawn() {
+                let _ = p.stdin.take().unwrap().write_all(&bytes);
+                let _ = p.wait();
+            }
+        }
+        assert_eq!(String::from_utf8_lossy(&got), "COPY-ONCE");
     }
 }

@@ -413,7 +413,7 @@ export class ConfigScreen {
     const hint = document.createElement("div");
     hint.className = "hint";
     hint.textContent =
-      "ARROWS MOVE  ENTER/LEFT/RIGHT TOGGLE  [ ] REORDER  ESC CLOSE" +
+      "↑↓ Move. Enter/←/→ Toggle. [ ] Reorder. ESC Close." +
       (this.hintSuffix ? "  ·  " + this.hintSuffix : "");
     panel.append(hint);
 

@@ -13,11 +13,12 @@ test("unknown and duplicate ids dropped, missing appended to default zone", () =
     zone: { top: ["globe", "bogus"], left: ["globe"], right: [], bottom: [] },
     enabled: { globe: false, bogus: true },
   });
-  assert.deepEqual(l.zone.top, ["globe"]);
+  // statusbar defaults to the top zone since the 2026-08-31 punch list
+  assert.deepEqual(l.zone.top, ["globe", "statusbar"]);
   assert.deepEqual(l.zone.tabs, ["spaces"]);
   assert.deepEqual(l.zone.left, ["clock", "clockmini", "hwinfo", "cpu", "memory", "disk", "tokens", "timer", "stopwatch", "countdown", "procs", "snippets"]);
   assert.deepEqual(l.zone.right, ["agents", "netstatus", "radar", "traffic"]);
-  assert.deepEqual(l.zone.bottom, ["files", "keyboard", "logtail", "statusbar", "shortcuts"]);
+  assert.deepEqual(l.zone.bottom, ["files", "keyboard", "logtail", "shortcuts"]);
   assert.equal(l.enabled.globe, false);
   assert.equal(l.enabled.cpu, true);
   assert.equal("bogus" in l.enabled, false);

@@ -87,7 +87,7 @@ export const WIDGET_TITLES: Record<WidgetId, string> = {
   hwinfo: "HARDWARE",
   cpu: "CPU",
   memory: "MEMORY",
-  procs: "PROCESSES",
+  procs: "TOP PROCESSES",
   snippets: "SNIPPETS",
   agents: "AGENTS",
   netstatus: "NETWORK",
@@ -136,7 +136,7 @@ const DEFAULT_ZONE: Record<WidgetId, Zone> = {
   traffic: "right",
   files: "bottom",
   keyboard: "bottom",
-  statusbar: "bottom",
+  statusbar: "top",
   disk: "left",
   tokens: "left",
   radar: "right",
@@ -179,14 +179,14 @@ const DEFAULT_ENABLED: Record<WidgetId, boolean> = {
 
 export const DEFAULT_LAYOUT: WidgetLayout = {
   zone: {
-    top: [],
+    top: ["statusbar"],
     tabs: ["spaces"],
     left: [
       "clock", "clockmini", "hwinfo", "cpu", "memory", "disk", "tokens",
       "timer", "stopwatch", "countdown", "procs", "snippets",
     ],
     right: ["agents", "netstatus", "globe", "radar", "traffic"],
-    bottom: ["files", "keyboard", "logtail", "statusbar", "shortcuts"],
+    bottom: ["files", "keyboard", "logtail", "shortcuts"],
   },
   enabled: { ...DEFAULT_ENABLED },
 };

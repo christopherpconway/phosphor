@@ -1,6 +1,7 @@
-// Tree-view file browser. The defining rule: navigating the tree never moves
-// the shell. The v2 list and the v3 icon grid both issued a `cd` on every
-// activation, so browsing dragged the session along with it.
+// Tree-view file browser. The defining rule: BROWSING the tree (arrows,
+// clicks, expand/collapse) never moves the shell; only an explicit Enter
+// acts (2026-08-31 ruling: Enter on a folder cds the shell there, Enter on
+// a file opens it with its default app, Cmd+Enter inserts the path).
 import { invoke } from "@tauri-apps/api/core";
 import { makePanel } from "../sysmon.ts";
 import { type FsEntry, sortEntries } from "../files.ts";
@@ -16,11 +17,14 @@ export interface TreeNode {
 }
 
 export type TreeAction =
-  | "insert" | "cd" | "expand" | "collapse" | "next" | "prev" | "none";
+  | "insert" | "cd" | "open" | "expand" | "collapse" | "next" | "prev"
+  | "up" | "none";
 
-/** Only the explicit chord moves the session. */
-export function treeAction(key: string, meta: boolean): TreeAction {
-  if (key === "Enter") return meta ? "cd" : "insert";
+/** Enter acts on the selection (cd for folders, open for files); the chord
+ *  inserts the path; Backspace re-roots one level up. */
+export function treeAction(key: string, meta: boolean, isDir: boolean): TreeAction {
+  if (key === "Enter") return meta ? "insert" : isDir ? "cd" : "open";
+  if (key === "Backspace") return "up";
   if (key === "ArrowRight") return "expand";
   if (key === "ArrowLeft") return "collapse";
   if (key === "ArrowDown") return "next";
@@ -103,6 +107,7 @@ export interface FsTreeWidget extends Widget {
 export function createFsTree(deps: {
   insertPath(p: string): void;
   cdTo(p: string): void;
+  openPath(p: string): void;
 }): FsTreeWidget {
   const panel = makePanel("FILES");
   const pathEl = document.createElement("div");
@@ -155,16 +160,28 @@ export function createFsTree(deps: {
     render();
   };
 
+  /** Re-root the tree one level up; the old root stays visible as a child. */
+  const goUp = () => {
+    if (!root || root.path === "/") return;
+    const parent = root.path.replace(/\/[^/]*$/, "") || "/";
+    const oldPath = root.path;
+    root = makeRoot(parent);
+    selected = oldPath;
+    void load(parent);
+  };
+
   const onKey = (e: KeyboardEvent) => {
     const node = rows().find((r) => r.node.path === selected)?.node;
-    const action = treeAction(e.key, e.metaKey);
+    const action = treeAction(e.key, e.metaKey, node?.isDir ?? false);
     if (action === "none") return;
     e.preventDefault();
     if (action === "next") return move(1);
     if (action === "prev") return move(-1);
+    if (action === "up") return goUp();
     if (!node) return;
     if (action === "insert") deps.insertPath(node.path);
-    else if (action === "cd") deps.cdTo(node.isDir ? node.path : node.path.replace(/\/[^/]*$/, ""));
+    else if (action === "cd") deps.cdTo(node.path);
+    else if (action === "open") deps.openPath(node.path);
     else if (action === "expand") expand(node);
     else if (action === "collapse") collapse(node);
   };
@@ -172,6 +189,19 @@ export function createFsTree(deps: {
 
   function render() {
     list.innerHTML = "";
+    if (root && root.path !== "/") {
+      const up = document.createElement("div");
+      up.className = "ck-treerow ck-tree-up";
+      const glyph = document.createElement("span");
+      glyph.className = "ck-tree-glyph";
+      glyph.textContent = "▴";
+      const name = document.createElement("span");
+      name.className = "ck-tree-name";
+      name.textContent = "..";
+      up.append(glyph, name);
+      up.addEventListener("click", goUp);
+      list.append(up);
+    }
     for (const { node, depth } of rows()) {
       const row = document.createElement("div");
       row.className = "ck-treerow";
