@@ -67,7 +67,7 @@ import { newSnippetId, sanitizeSnippets, withSnippet, type Snippet } from "./sni
 import { findShortcut } from "./shortcuts.ts";
 import { ShortcutsOverlay } from "./cockpit/shortcuts-overlay.ts";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { parseWindowParams, nextWindowLabel } from "./win.ts";
+import { parseWindowParams, nextWindowLabel, labelForConfig } from "./win.ts";
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
 import "./cockpit/cockpit.css";
@@ -1692,9 +1692,22 @@ function applyVisual(raw: unknown, persist = true) {
   cockpit.relayout();
 }
 
-function openWindow(config: string | null) {
-  const { label, next } = nextWindowLabel(localStorage.getItem("phosphor-next-win"));
-  localStorage.setItem("phosphor-next-win", next);
+async function openWindow(config: string | null) {
+  // Config-bound windows reuse the config's label across relaunches so their
+  // workspace file is found again; no-config windows still draw from the counter.
+  let label: string;
+  if (config) {
+    label = labelForConfig(config);
+  } else {
+    const { label: l, next } = nextWindowLabel(localStorage.getItem("phosphor-next-win"));
+    localStorage.setItem("phosphor-next-win", next);
+    label = l;
+  }
+  const existing = await WebviewWindow.getByLabel(label);
+  if (existing) {
+    existing.setFocus().catch(() => {});
+    return;
+  }
   const q = new URLSearchParams({ win: label });
   if (config) q.set("config", config);
   new WebviewWindow(label, {

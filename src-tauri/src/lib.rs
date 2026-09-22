@@ -254,7 +254,9 @@ fn pty_cwd(state: State<PtyState>, id: u32) -> Result<String, String> {
 
 fn workspace_file_name(name: Option<&str>) -> String {
     match name {
-        Some(n) if !n.is_empty() && n.chars().all(|c| c.is_ascii_alphanumeric()) => format!("workspace-{n}.json"),
+        Some(n) if !n.is_empty() && n.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') => {
+            format!("workspace-{n}.json")
+        }
         _ => "workspace.json".to_string(),
     }
 }
@@ -644,6 +646,7 @@ mod tests {
         assert_eq!(super::workspace_file_name(None), "workspace.json");
         assert_eq!(super::workspace_file_name(Some("")), "workspace.json");
         assert_eq!(super::workspace_file_name(Some("w2")), "workspace-w2.json");
+        assert_eq!(super::workspace_file_name(Some("w-night")), "workspace-w-night.json");
         assert_eq!(super::workspace_file_name(Some("../x")), "workspace.json");
     }
 
