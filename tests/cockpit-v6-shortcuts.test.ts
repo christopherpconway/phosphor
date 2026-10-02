@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SHORTCUTS, isMac } from "../src/shortcuts.ts";
+import { SHORTCUTS, isMac, swallowsKeypress } from "../src/shortcuts.ts";
 
 const key = (init: Partial<KeyboardEvent>) => ({ metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, key: "", ...init }) as KeyboardEvent;
 
@@ -27,4 +27,11 @@ test("undoclose matches the platform chord and does not collide with close", () 
   assert.ok(sc.match(key(chord)));
   const close = SHORTCUTS.find((s) => s.id === "close")!;
   assert.equal(close.match(key(chord)), false);
+});
+
+test("Shift+Enter's trailing keypress is swallowed so xterm never sends a submitting CR", () => {
+  assert.ok(swallowsKeypress(key({ type: "keypress", key: "Enter", shiftKey: true })));
+  assert.equal(swallowsKeypress(key({ type: "keypress", key: "Enter" })), false);
+  assert.equal(swallowsKeypress(key({ type: "keypress", key: "a" })), false);
+  assert.equal(swallowsKeypress(key({ type: "keyup", key: "Enter", shiftKey: true })), false);
 });

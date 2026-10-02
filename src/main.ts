@@ -64,7 +64,7 @@ import { sound } from "./cockpit/sound.ts";
 import { ConfigScreen } from "./cockpit/configscreen.ts";
 import { SnippetLib } from "./snippetlib.ts";
 import { newSnippetId, sanitizeSnippets, withSnippet, type Snippet } from "./snippets.ts";
-import { findShortcut } from "./shortcuts.ts";
+import { findShortcut, swallowsKeypress } from "./shortcuts.ts";
 import { ShortcutsOverlay } from "./cockpit/shortcuts-overlay.ts";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { parseWindowParams, nextWindowLabel, labelForConfig } from "./win.ts";
@@ -1028,7 +1028,7 @@ const isMac = /Mac|iP/.test(navigator.platform);
 /** Keyboard chords. macOS uses Cmd; Linux/Windows use the terminal-standard
  *  Ctrl+Shift layer (plain Ctrl combos must keep reaching the shell). */
 function handleKey(pane: Pane, e: KeyboardEvent): boolean {
-  if (e.type !== "keydown") return true;
+  if (e.type !== "keydown") return !swallowsKeypress(e);
   if (document.body.dataset.mode === "cockpit") sound.keystroke();
   if (pane.exited && !(isMac ? e.metaKey : e.ctrlKey)) {
     pane.respawn();

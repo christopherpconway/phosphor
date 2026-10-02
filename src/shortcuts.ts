@@ -181,3 +181,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
 export function findShortcut(e: KeyboardEvent): Shortcut | undefined {
   return SHORTCUTS.find((s) => s.match(e));
 }
+
+/** A chord's trailing keypress must not reach xterm, or xterm types the key
+ *  after the chord already acted (Shift+Enter sent ESC CR, then a submitting CR,
+ *  once macOS 27's WebKit started firing keypress for it). */
+export const swallowsKeypress = (e: KeyboardEvent) =>
+  e.type === "keypress" && findShortcut(e) !== undefined;
