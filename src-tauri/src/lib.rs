@@ -535,7 +535,7 @@ fn tray_update(app: AppHandle, state: State<TrayState>, win: String, items: Vec<
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(PtyState::default())
         .manage(TrayState::default())
@@ -554,7 +554,11 @@ pub fn run() {
                 })
                 .build(app);
             Ok(())
-        })
+        });
+    // macOS only: on Linux a menu renders as a bar inside the window, and every
+    // action in it already has an in-app shortcut.
+    #[cfg(target_os = "macos")]
+    let builder = builder
         // Tauri's default menu carries File > Close Window on Cmd+W, which
         // fires alongside the app's own Cmd+W (close pane); a keydown
         // preventDefault cannot stop a native accelerator. Build the menu
@@ -592,7 +596,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             let _ = window.set_as_windows_menu_for_nsapp();
             MenuBuilder::new(app).items(&[&app_menu, &edit, &window]).build()
-        })
+        });
+    builder
         .invoke_handler(tauri::generate_handler![
             pty_spawn,
             pty_write,
