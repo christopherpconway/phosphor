@@ -158,9 +158,9 @@ export const SHORTCUTS: readonly Shortcut[] = [
   {
     id: "fullscreen",
     label: "Fullscreen",
-    mac: "Cmd+Ctrl+F",
+    mac: isMac ? "Cmd+Ctrl+F" : "F11",
     group: "View",
-    match: (e) => isMac && e.metaKey && e.ctrlKey && lower(e) === "f",
+    match: (e) => (isMac ? e.metaKey && e.ctrlKey && lower(e) === "f" : e.key === "F11"),
   },
   {
     id: "config",

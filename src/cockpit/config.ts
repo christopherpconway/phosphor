@@ -37,6 +37,8 @@ export interface CockpitCfg {
   barSize: number;
   sidebars: Sidebars;
   cursorBlink: boolean;
+  /** Pane status row under the space tabs instead of below the panes. */
+  statusTop: boolean;
   /**
    * Multi-line pastes are previewed before they reach the shell (PH-4).
    * Off by default (Chris, 2026-08-19): the confirm step got in the way more
@@ -68,6 +70,7 @@ export const DEFAULT_COCKPIT: CockpitCfg = {
   barSize: 12,
   sidebars: "both",
   cursorBlink: true,
+  statusTop: false,
   pasteGuard: false,
   attention: { enabled: true, tray: true, badges: true, sound: false },
 };
@@ -191,6 +194,7 @@ export function sanitizeCockpit(raw: unknown): CockpitCfg {
   d.barSize = sanitizeBarSize(o.barSize);
   d.sidebars = sanitizeSidebars(o.sidebars);
   if (typeof o.cursorBlink === "boolean") d.cursorBlink = o.cursorBlink;
+  if (typeof o.statusTop === "boolean") d.statusTop = o.statusTop;
   if (typeof o.pasteGuard === "boolean") d.pasteGuard = o.pasteGuard;
   d.attention = sanitizeAttention(o.attention);
   return d;

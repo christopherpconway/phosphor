@@ -48,6 +48,11 @@ body {
   opacity: 0;
 }
 
+body[data-status="top"] #terminal {
+  top: 40px;
+  bottom: 18px;
+}
+
 #terminal .pane {
   position: absolute;
   overflow: hidden;

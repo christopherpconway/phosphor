@@ -1715,6 +1715,8 @@ async function openWindow(config: string | null) {
     title: config ? `phosphor · ${config}` : "phosphor",
     width: 1100,
     height: 700,
+    // Linux: no title bar (tiling WMs like Hyprland/Omarchy); matches tauri.linux.conf.json.
+    decorations: !/Linux/.test(navigator.platform),
   });
 }
 
@@ -1726,6 +1728,8 @@ function refreshVisual() {
   // data-fx drives the one-CRT layout switch (full-window canvas + capture,
   // hidden widget DOM); setChrome feeds the widget rasterizer to the shader.
   document.body.dataset.fx = visual.renderMode;
+  document.body.dataset.status = visual.ck.statusTop ? "top" : "bottom";
+  crt.statusTop = visual.ck.statusTop;
   crt.setChrome(
     isOneCrt()
       ? (ctx, rect, dpr, w, h, now) => domLayer.draw(ctx, rect, dpr, w, h, now)
@@ -1926,6 +1930,7 @@ const configScreen = new ConfigScreen(
       font: visual.font, fontSize: visual.fontSize,
       widgetSize: visual.ck.widgetSize, barSize: visual.ck.barSize,
       sidebars: visual.ck.sidebars, cursorBlink: visual.ck.cursorBlink,
+      statusTop: visual.ck.statusTop,
       pasteGuard: visual.ck.pasteGuard,
       boot: visual.ck.boot, sounds: visual.ck.sounds,
       brand: visual.ck.brand, bar: visual.ck.bar.map((b) => ({ ...b })),
@@ -1944,6 +1949,7 @@ const configScreen = new ConfigScreen(
       if (patch.barSize !== undefined) visual.ck.barSize = patch.barSize;
       if (patch.sidebars !== undefined) visual.ck.sidebars = patch.sidebars;
       if (patch.cursorBlink !== undefined) visual.ck.cursorBlink = patch.cursorBlink;
+      if (patch.statusTop !== undefined) visual.ck.statusTop = patch.statusTop;
       if (patch.pasteGuard !== undefined) visual.ck.pasteGuard = patch.pasteGuard;
       if (patch.boot !== undefined) visual.ck.boot = patch.boot;
       if (patch.sounds !== undefined) visual.ck.sounds = patch.sounds;
@@ -2024,6 +2030,9 @@ function demoWorkspace() {
 async function boot() {
   await document.fonts.ready;
 
+  // While the GPU context is gone, show the xterm canvases directly so text
+  // never vanishes; the CRT pipeline takes back over once it is rebuilt.
+  crt.onContextChange = (ok) => termContainer.classList.toggle("raw", !ok);
   if (!crt.start()) {
     termContainer.classList.add("raw");
   }

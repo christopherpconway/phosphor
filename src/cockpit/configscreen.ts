@@ -53,6 +53,7 @@ export interface ScreenState {
   fontSize: number;
   sidebars: Sidebars;
   cursorBlink: boolean;
+  statusTop: boolean;
   pasteGuard: boolean;
   boot: boolean;
   sounds: boolean;
@@ -191,6 +192,12 @@ function cockpitControls(): Ctl[] {
       kind: "toggle",
       read: (s) => (s.cursorBlink ? "ON" : "OFF"),
       change: (s) => ({ cursorBlink: !s.cursorBlink }),
+    },
+    {
+      label: "PANE STATUS ROW",
+      kind: "toggle",
+      read: (s) => (s.statusTop ? "TOP" : "BOTTOM"),
+      change: (s) => ({ statusTop: !s.statusTop }),
     },
     {
       label: "PASTE GUARD",

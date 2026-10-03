@@ -405,6 +405,8 @@ export class CrtRenderer {
   private sources: PaneSource[] = [];
   private bars: BarSource[] = [];
   private statusText = "";
+  /** Draw the pane status row above the content area instead of below it. */
+  statusTop = false;
   private bg = "#000";
   private contentEl: HTMLElement | null = null;
   private tabs: TabInfo[] = [];
@@ -452,6 +454,9 @@ export class CrtRenderer {
     return `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${alpha})`;
   }
 
+  /** Called with false when the GPU drops the WebGL context, true once rebuilt. */
+  onContextChange: ((ok: boolean) => void) | null = null;
+
   start(): boolean {
     const gl = this.canvas.getContext("webgl", {
       alpha: false,
@@ -460,6 +465,28 @@ export class CrtRenderer {
     });
     if (!gl) return false;
     this.gl = gl;
+    // macOS/WebKit drops WebGL contexts after sleep, GPU-process restarts, or
+    // memory pressure. Every pane is drawn only through this canvas, so an
+    // unhandled loss blanks all text in every space while the DOM widgets
+    // keep updating. preventDefault() opts in to a restore; rebuild then.
+    this.canvas.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      this.stop();
+      this.onContextChange?.(false);
+    });
+    this.canvas.addEventListener("webglcontextrestored", () => {
+      this.initGl();
+      this.onContextChange?.(true);
+    });
+    this.initGl();
+    return true;
+  }
+
+  private initGl() {
+    const gl = this.gl;
+    this.texW = this.texH = 0; // force resizeTargets on the first frame
+    this.pingTex = [];
+    this.pingFbo = [];
     this.screenProg = compile(gl, VERT, SCREEN_FRAG);
     this.persistProg = compile(gl, VERT, PERSIST_FRAG);
     this.srcTex = makeTex(gl);
@@ -484,7 +511,6 @@ export class CrtRenderer {
       this.raf = requestAnimationFrame(loop);
     };
     loop();
-    return true;
   }
 
   stop() {
@@ -627,18 +653,20 @@ export class CrtRenderer {
 
     if (this.statusText) {
       const statusH = STATUS_H * dprC;
+      const sy = this.statusTop ? oy - statusH : oy + ch2; // strip top edge
+      const ly = this.statusTop ? oy - 0.5 : oy + ch2 + 0.5; // divider on the panes' side
       ctx.fillStyle = this.tintCss(0.04);
-      ctx.fillRect(ox, oy + ch2, cw2, statusH);
+      ctx.fillRect(ox, sy, cw2, statusH);
       ctx.strokeStyle = this.tintCss(0.25);
       ctx.lineWidth = Math.max(1, dprC);
       ctx.beginPath();
-      ctx.moveTo(ox, oy + ch2 + 0.5);
-      ctx.lineTo(ox + cw2, oy + ch2 + 0.5);
+      ctx.moveTo(ox, ly);
+      ctx.lineTo(ox + cw2, ly);
       ctx.stroke();
       ctx.fillStyle = this.tintCss(0.9);
       ctx.font = `${Math.round(13 * dprC)}px "IBM VGA", monospace`;
       ctx.textBaseline = "middle";
-      ctx.fillText(this.statusText, ox + Math.round(8 * dprC), oy + ch2 + statusH / 2 + 1);
+      ctx.fillText(this.statusText, ox + Math.round(8 * dprC), sy + statusH / 2 + 1);
     }
 
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);

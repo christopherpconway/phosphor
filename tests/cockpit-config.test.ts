@@ -12,7 +12,7 @@ test("valid values survive", () => {
   assert.deepEqual(sanitizeCockpit({ boot: false, sounds: false }), {
     boot: false, sounds: false, brand: "", bar: DEFAULT_BAR, widgets: DEFAULT_LAYOUT,
     clockTz: {}, logPaths: {}, timerSecs: 1500, countdown: { target: "", label: "" },
-    widgetSize: 11, barSize: 12, sidebars: "both", cursorBlink: true, pasteGuard: false,
+    widgetSize: 11, barSize: 12, sidebars: "both", cursorBlink: true, statusTop: false, pasteGuard: false,
     attention: { enabled: true, tray: true, badges: true, sound: false },
   });
 });
@@ -21,7 +21,12 @@ test("partial objects fill from defaults", () => {
   assert.deepEqual(sanitizeCockpit({ brand: "WOPR" }), {
     boot: true, sounds: true, brand: "WOPR", bar: DEFAULT_BAR, widgets: DEFAULT_LAYOUT,
     clockTz: {}, logPaths: {}, timerSecs: 1500, countdown: { target: "", label: "" },
-    widgetSize: 11, barSize: 12, sidebars: "both", cursorBlink: true, pasteGuard: false,
+    widgetSize: 11, barSize: 12, sidebars: "both", cursorBlink: true, statusTop: false, pasteGuard: false,
     attention: { enabled: true, tray: true, badges: true, sound: false },
   });
+});
+
+test("status row position survives; junk falls back to bottom", () => {
+  assert.equal(sanitizeCockpit({ statusTop: true }).statusTop, true);
+  assert.equal(sanitizeCockpit({ statusTop: "top" }).statusTop, false);
 });

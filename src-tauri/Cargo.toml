@@ -1,6 +1,6 @@
 [package]
 name = "phosphor"
-version = "0.8.3"
+version = "0.8.4"
 description = "A CRT terminal with a cockpit"
 authors = ["Christopher Conway"]
 license = "MIT"
