@@ -1,0 +1,22 @@
+# Maintainer: Christopher Conway <christopherpconway at gmail dot com>
+pkgname=phosphor-bin
+pkgver=0.8.4
+pkgrel=1
+pkgdesc="A CRT terminal with a cockpit"
+arch=('x86_64' 'aarch64')
+url="https://github.com/christopherpconway/phosphor"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator')
+provides=('phosphor')
+conflicts=('phosphor')
+source=("LICENSE-$pkgver::https://raw.githubusercontent.com/christopherpconway/phosphor/v$pkgver/LICENSE")
+source_x86_64=("$url/releases/download/v$pkgver/phosphor_${pkgver}_amd64.deb")
+source_aarch64=("$url/releases/download/v$pkgver/phosphor_${pkgver}_arm64.deb")
+sha256sums=('e65d29ddf8d2571aab5f041d17cd18de06c92eb8a9401fe29d61ced9a208b1c4')
+sha256sums_x86_64=('610dd6d7ce0c9782af70dd81c1dac4acf8d3d980216d4062e28ff06a3170d3e2')
+sha256sums_aarch64=('e9eb527353b72b14f41ce4d4d98aece5fc69199b2c7fe7673d59c4697d75c9e1')
+
+package() {
+  bsdtar -xf data.tar.gz -C "$pkgdir"
+  install -Dm644 "LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,21 @@
+pkgbase = phosphor-bin
+	pkgdesc = A CRT terminal with a cockpit
+	pkgver = 0.8.4
+	pkgrel = 1
+	url = https://github.com/christopherpconway/phosphor
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libayatana-appindicator
+	provides = phosphor
+	conflicts = phosphor
+	source = LICENSE-0.8.4::https://raw.githubusercontent.com/christopherpconway/phosphor/v0.8.4/LICENSE
+	sha256sums = e65d29ddf8d2571aab5f041d17cd18de06c92eb8a9401fe29d61ced9a208b1c4
+	source_x86_64 = https://github.com/christopherpconway/phosphor/releases/download/v0.8.4/phosphor_0.8.4_amd64.deb
+	sha256sums_x86_64 = 610dd6d7ce0c9782af70dd81c1dac4acf8d3d980216d4062e28ff06a3170d3e2
+	source_aarch64 = https://github.com/christopherpconway/phosphor/releases/download/v0.8.4/phosphor_0.8.4_arm64.deb
+	sha256sums_aarch64 = e9eb527353b72b14f41ce4d4d98aece5fc69199b2c7fe7673d59c4697d75c9e1
+
+pkgname = phosphor-bin
