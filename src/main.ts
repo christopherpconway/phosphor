@@ -197,6 +197,9 @@ class Pane {
     try {
       this.term.loadAddon(new CanvasAddon());
     } catch {}
+    // Every repaint of this pane's canvases (output, scroll, selection, focus)
+    // must reach the CRT composite; cursor blink is covered by crt.blinkPoll.
+    this.term.onRender(() => crt.invalidate());
     this.term.attachCustomKeyEventHandler((e) => handleKey(this, e));
     this.term.parser.registerOscHandler(7, (data) => {
       const p = oscUrlToPath(data);
@@ -1730,10 +1733,12 @@ function refreshVisual() {
   document.body.dataset.fx = visual.renderMode;
   document.body.dataset.status = visual.ck.statusTop ? "top" : "bottom";
   crt.statusTop = visual.ck.statusTop;
+  crt.blinkPoll = visual.ck.cursorBlink;
   crt.setChrome(
     isOneCrt()
       ? (ctx, rect, dpr, w, h, now) => domLayer.draw(ctx, rect, dpr, w, h, now)
       : null,
+    (now) => domLayer.stale(now),
   );
   domLayer.markDirty();
   const root = document.documentElement.style;

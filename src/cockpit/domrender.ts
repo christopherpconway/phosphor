@@ -8,6 +8,7 @@
 // rects (panel corner notches ignored), first-line-rect text placement
 // (widgets are nowrap throughout), no hover styles.
 
+const RASTER_MS = 120;
 const NO_INK = new Set(["rgba(0, 0, 0, 0)", "transparent", ""]);
 const hasInk = (c: string) => !NO_INK.has(c);
 
@@ -54,6 +55,11 @@ export class DomLayer {
     this.dirty = true;
   }
 
+  /** True when the next draw() would re-rasterize, i.e. the CRT must recomposite. */
+  stale(now: number): boolean {
+    return this.dirty || now - this.lastRaster > RASTER_MS;
+  }
+
   /** Blit the widget layer; re-rasterize on DOM change or every 120ms —
    *  sparkline/globe/radar canvases repaint without any DOM mutation, and
    *  the radar sweep needs a reasonably fresh copy to read as motion. */
@@ -70,7 +76,7 @@ export class DomLayer {
       this.layer.height = h;
       this.dirty = true;
     }
-    if (this.dirty || now - this.lastRaster > 120) {
+    if (this.stale(now)) {
       this.dirty = false;
       this.lastRaster = now;
       this.lctx.clearRect(0, 0, w, h);

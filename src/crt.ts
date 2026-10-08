@@ -357,6 +357,50 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
 }`;
 
+// ---------- frame scheduling ----------
+// Compositing (2D redraw + full-window texImage2D) is the expensive half and
+// only runs when something changed. The shader passes are cheap on the CPU
+// and run alone, at ~30 fps, while a time-driven effect animates or the
+// afterglow is still fading. Otherwise the loop does nothing.
+
+const FRAME_60 = 1000 / 60;
+/** Min gap between full frames: ~60 fps, so 120 Hz panels don't double the work. */
+export const FULL_FRAME_MS = 15;
+/** Min gap between animation-only frames: ~30 fps (slack under 33.3 for rAF jitter). */
+export const ANIM_FRAME_MS = 30;
+/** The canvas addon blinks the cursor without firing onRender; poll for it. */
+export const BLINK_POLL_MS = 100;
+export const DEGAUSS_MS = 700;
+
+export type FramePlan = "full" | "shade" | "idle";
+
+export function planFrame(p: {
+  now: number;
+  dirty: boolean;
+  lastShade: number;
+  lastUpload: number;
+  timeFx: boolean;
+  degaussing: boolean;
+  settleMs: number;
+}): FramePlan {
+  const since = p.now - p.lastShade;
+  if (p.dirty) return since >= FULL_FRAME_MS ? "full" : "idle";
+  if (p.degaussing) return since >= FULL_FRAME_MS ? "shade" : "idle";
+  const animating = p.timeFx || p.now - p.lastUpload < p.settleMs;
+  return animating && since >= ANIM_FRAME_MS ? "shade" : "idle";
+}
+
+/** Per-60Hz-frame afterglow multiplier for a persistence setting (0 = off). */
+export function persistDecay(persistence: number): number {
+  return persistence > 0 ? 0.55 + persistence * 0.42 : 0;
+}
+
+/** How long the afterglow takes to fall below one 8-bit step after the last upload. */
+export function settleMs(persistence: number): number {
+  const d = persistDecay(persistence);
+  return d > 0 ? (Math.log(1 / 255) / Math.log(d)) * FRAME_60 : 0;
+}
+
 function compile(gl: WebGLRenderingContext, vert: string, frag: string): WebGLProgram {
   const mk = (type: number, src: string) => {
     const s = gl.createShader(type)!;
@@ -388,7 +432,7 @@ function makeTex(gl: WebGLRenderingContext): WebGLTexture {
 }
 
 export class CrtRenderer {
-  settings: CrtSettings;
+  private _settings: CrtSettings;
   private canvas: HTMLCanvasElement;
   private gl!: WebGLRenderingContext;
   private comp = document.createElement("canvas");
@@ -413,35 +457,63 @@ export class CrtRenderer {
   private chromeFn:
     | ((ctx: CanvasRenderingContext2D, canvasRect: DOMRect, dpr: number, w: number, h: number, now: number) => void)
     | null = null;
+  private chromeStale: ((now: number) => boolean) | null = null;
   private degaussT0 = -1e9;
+  private dirty = true;
+  private lastShade = -1e9;
+  private lastUpload = -1e9;
+  /** Set while xterm's cursor blink is on; see BLINK_POLL_MS. */
+  blinkPoll = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.settings = { ...RETRO_DEFAULTS, mono: COLOR_SCHEMES.green.mono, tint: COLOR_SCHEMES.green.tint };
+    this._settings = { ...RETRO_DEFAULTS, mono: COLOR_SCHEMES.green.mono, tint: COLOR_SCHEMES.green.tint };
+  }
+
+  get settings(): CrtSettings {
+    return this._settings;
+  }
+
+  /** Tint feeds the 2D chrome too, so a settings change needs a recomposite. */
+  set settings(s: CrtSettings) {
+    this._settings = s;
+    this.dirty = true;
+  }
+
+  /** Something drawn into the composite changed (xterm render, layout, chrome). */
+  invalidate() {
+    this.dirty = true;
   }
 
   /** The container whose box is the pane content area (status row sits below it). */
   setContentEl(el: HTMLElement) {
     this.contentEl = el;
+    this.dirty = true;
   }
 
   setSources(sources: PaneSource[], bars: BarSource[], statusText: string) {
     this.sources = sources;
     this.bars = bars;
     this.statusText = statusText;
+    this.dirty = true;
   }
 
   setTabs(tabs: TabInfo[]) {
     this.tabs = tabs;
+    this.dirty = true;
   }
 
   setBackground(color: string) {
     this.bg = color;
+    this.dirty = true;
   }
 
-  /** Extra compositor pass drawn under the panes (one-CRT widget layer). */
-  setChrome(fn: typeof this.chromeFn) {
+  /** Extra compositor pass drawn under the panes (one-CRT widget layer).
+   *  `stale(now)` says when that layer has new pixels and needs a recomposite. */
+  setChrome(fn: typeof this.chromeFn, stale: ((now: number) => boolean) | null = null) {
     this.chromeFn = fn;
+    this.chromeStale = fn ? stale : null;
+    this.dirty = true;
   }
 
   /** Kick off the degauss wobble (scheme/mode switches). */
@@ -506,11 +578,14 @@ export class CrtRenderer {
       gl.enableVertexAttribArray(loc);
       gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
     }
-    const loop = () => {
-      this.frame();
+    this.dirty = true;
+    // ponytail: the rAF chain stays armed while idle (tick() returns early);
+    // a no-op callback is cheaper than re-arming it from every dirty source.
+    const loop = (now: number) => {
+      this.tick(now);
       this.raf = requestAnimationFrame(loop);
     };
-    loop();
+    this.raf = requestAnimationFrame(loop);
   }
 
   stop() {
@@ -532,22 +607,50 @@ export class CrtRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
-  private frame() {
-    const gl = this.gl;
+  private tick(now: number) {
     if (this.sources.length === 0) return;
-
-    const dprC = window.devicePixelRatio || 1;
-    const w = Math.floor(this.canvas.clientWidth * dprC);
-    const h = Math.floor(this.canvas.clientHeight * dprC);
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.floor(this.canvas.clientWidth * dpr);
+    const h = Math.floor(this.canvas.clientHeight * dpr);
     if (w === 0 || h === 0) return;
-    if (w !== this.texW || h !== this.texH) this.resizeTargets(w, h);
+    if (w !== this.texW || h !== this.texH) {
+      this.resizeTargets(w, h);
+      this.dirty = true;
+    }
+    if (this.chromeStale?.(now)) this.dirty = true;
+    if (this.blinkPoll && now - this.lastUpload >= BLINK_POLL_MS && document.hasFocus()) {
+      this.dirty = true;
+    }
 
+    const s = this.settings;
+    const plan = planFrame({
+      now,
+      dirty: this.dirty,
+      lastShade: this.lastShade,
+      lastUpload: this.lastUpload,
+      timeFx: s.flicker > 0 || s.noise > 0 || s.jitter > 0,
+      degaussing: now - this.degaussT0 < DEGAUSS_MS,
+      settleMs: settleMs(s.persistence),
+    });
+    if (plan === "idle") return;
+    if (plan === "full") {
+      this.dirty = false;
+      this.composite(w, h, dpr, now);
+      this.lastUpload = now;
+    }
+    this.shade(now, dpr);
+    this.lastShade = now;
+  }
+
+  /** Redraw every pane + chrome into the 2D comp and upload it to srcTex. */
+  private composite(w: number, h: number, dprC: number, now: number) {
+    const gl = this.gl;
     const ctx = this.ctx2d;
     ctx.fillStyle = this.bg;
     ctx.fillRect(0, 0, w, h);
 
     const canvasRect = this.canvas.getBoundingClientRect();
-    this.chromeFn?.(ctx, canvasRect, dprC, w, h, performance.now());
+    this.chromeFn?.(ctx, canvasRect, dprC, w, h, now);
     const contRect = (this.contentEl ?? this.canvas).getBoundingClientRect();
     const ox = (contRect.x - canvasRect.x) * dprC;
     const oy = (contRect.y - canvasRect.y) * dprC;
@@ -672,9 +775,18 @@ export class CrtRenderer {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
     gl.bindTexture(gl.TEXTURE_2D, this.srcTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.comp);
+  }
 
+  /** Persistence + screen passes over the last uploaded comp. */
+  private shade(now: number, dpr: number) {
+    const gl = this.gl;
     const s = this.settings;
-    const decay = s.persistence > 0 ? 0.55 + s.persistence * 0.42 : 0.0;
+    // Decay is tuned per 60 Hz frame; scale it by elapsed time so the
+    // afterglow fades at the same speed at 30 fps. Capped at one animation
+    // frame: after an idle gap the glass was showing the settled image, so
+    // the next frame continues from there rather than skipping the fade.
+    const dt = Math.min(now - this.lastShade, ANIM_FRAME_MS + 4);
+    const decay = persistDecay(s.persistence) ** (dt / FRAME_60);
 
     // NextGen is the zero case of this same pipeline, not a second pipeline.
     // The persistence pass is deliberately NOT skipped when every effect is 0:
@@ -698,7 +810,6 @@ export class CrtRenderer {
     this.ping = src;
 
     // screen pass
-    const dpr = window.devicePixelRatio || 1;
     const cw = Math.floor(this.canvas.clientWidth * dpr);
     const ch = Math.floor(this.canvas.clientHeight * dpr);
     if (this.canvas.width !== cw || this.canvas.height !== ch) {
@@ -714,7 +825,7 @@ export class CrtRenderer {
     gl.uniform1i(u("uTex"), 0);
     gl.uniform2f(u("uRes"), cw, ch);
     gl.uniform2f(u("uTexRes"), this.texW, this.texH);
-    gl.uniform1f(u("uTime"), performance.now() / 1000);
+    gl.uniform1f(u("uTime"), now / 1000);
     gl.uniform1f(u("uScan"), s.scanlines);
     gl.uniform1f(u("uCurv"), s.curvature);
     gl.uniform1f(u("uGlow"), s.glow);
@@ -723,7 +834,7 @@ export class CrtRenderer {
     gl.uniform1f(u("uNoise"), s.noise);
     gl.uniform1f(u("uMono"), s.mono ? 1 : 0);
     gl.uniform3f(u("uTint"), s.tint[0], s.tint[1], s.tint[2]);
-    const dgAge = (performance.now() - this.degaussT0) / 700;
+    const dgAge = (now - this.degaussT0) / DEGAUSS_MS;
     gl.uniform1f(u("uDegauss"), dgAge >= 1 ? 0 : Math.max(0, 1 - dgAge));
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }

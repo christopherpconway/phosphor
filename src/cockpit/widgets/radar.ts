@@ -57,12 +57,21 @@ export function createRadar(): Widget {
   poll();
   setInterval(poll, POLL_MS);
 
-  const draw = () => {
+  let lastDraw = 0;
+  // Same cadence gate as globe.ts: off-screen or off-mode is a no-op reschedule.
+  const draw = (t: number) => {
     requestAnimationFrame(draw);
-    if (!panel.root.isConnected) return;
-    const w = (canvas.width = canvas.clientWidth || 200);
-    const h = (canvas.height = Math.round(w * 0.72));
-    canvas.style.height = `${h}px`;
+    if (!panel.root.isConnected || document.body.dataset.mode !== "cockpit") return;
+    if (t - lastDraw < 33) return;
+    lastDraw = t;
+    // Assigning canvas.width reallocates the bitmap; only do it on a real change.
+    const w = canvas.clientWidth || 200;
+    const h = Math.round(w * 0.72);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.height = `${h}px`;
+    }
     const cx = w / 2;
     const cy = h / 2;
     const r = Math.min(cx, cy) - 4;
@@ -118,7 +127,7 @@ export function createRadar(): Widget {
     }
     ctx.globalAlpha = 1;
   };
-  draw();
+  requestAnimationFrame(draw);
 
   return { id: "radar", title: "RADAR", root: panel.root };
 }
