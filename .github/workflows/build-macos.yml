@@ -31,6 +31,27 @@ jobs:
         with:
           workspaces: src-tauri
 
+      # Self-signed "Phosphor Dev" identity (scripts/make-signing-cert.sh).
+      # A stable certificate is what lets macOS keep TCC grants across
+      # rebuilds; unsigned or ad-hoc bundles reset them every release.
+      - name: Import code-signing identity
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          # Self-signed: trust it or find-identity reports 0 valid identities.
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign scripts/phosphor-dev.cer
+          security find-identity -v -p codesigning build.keychain | grep '"Phosphor Dev"'
+          rm certificate.p12
+
       - name: Build
         env:
           # Signs the updater bundle (.app.tar.gz.sig); the matching public
@@ -40,6 +61,12 @@ jobs:
         run: |
           npm ci
           npm run tauri build -- --target universal-apple-darwin
+
+      - name: Prove the bundle is signed with a certificate
+        run: |
+          app=src-tauri/target/universal-apple-darwin/release/bundle/macos/phosphor.app
+          codesign --verify --deep --strict -v "$app"
+          codesign -d -r- "$app" 2>&1 | tee /dev/stderr | grep -q 'certificate leaf'
 
       # Release assets are the real destination and do not count against the
       # Actions artifact storage quota (which locked builds out twice on

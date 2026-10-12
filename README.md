@@ -202,7 +202,7 @@ These aren't headline features, just care taken where terminals usually aren't c
 
 Pushing to main triggers CI, which builds `.rpm` and `.deb` for x86_64 and aarch64 plus an x86_64 AppImage; tagged releases get the packages attached under Releases.
 
-Both CI workflows also sign the updater bundles (`.app.tar.gz` on macOS, `.AppImage` on Linux) with the key in the `TAURI_SIGNING_PRIVATE_KEY` secret and merge their entry into the release's `latest.json` via `scripts/updater-manifest.sh`; the in-app updater polls that file.
+The macOS bundle is code-signed with the self-signed "Phosphor Dev" identity (`scripts/make-signing-cert.sh` creates it per Mac; CI imports it from the `APPLE_CERTIFICATE` secret). Self-signed does not satisfy Gatekeeper, but it gives macOS a stable certificate to bind permission grants to, so Accessibility and Screen Recording survive updates. Both CI workflows also sign the updater bundles (`.app.tar.gz` on macOS, `.AppImage` on Linux) with the key in the `TAURI_SIGNING_PRIVATE_KEY` secret and merge their entry into the release's `latest.json` via `scripts/updater-manifest.sh`; the in-app updater polls that file.
 
 The frontend is pinned to xterm.js 5.5 deliberately: the CRT pipeline captures the canvas renderer's layers as a WebGL texture, and xterm 6 removed the canvas renderer.
 
