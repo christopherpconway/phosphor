@@ -253,7 +253,7 @@ body[data-status="top"] #terminal {
 
 /* ---------- multi-line paste preview ---------- */
 
-#pasteconfirm {
+.ck-modal {
   position: fixed;
   inset: 0;
   z-index: 86;
@@ -262,8 +262,8 @@ body[data-status="top"] #terminal {
   align-items: center;
   justify-content: center;
 }
-#pasteconfirm.hidden { display: none; }
-#pasteconfirm .panel {
+.ck-modal.hidden { display: none; }
+.ck-modal .panel {
   min-width: 420px;
   max-width: 70vw;
   padding: 14px 18px;
@@ -273,8 +273,8 @@ body[data-status="top"] #terminal {
   font-family: "IBM VGA", monospace;
   clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
 }
-#pasteconfirm h1 { font-size: 15px; letter-spacing: 2px; color: var(--ck-accent, #0af); }
-#pasteconfirm pre {
+.ck-modal h1 { font-size: 15px; letter-spacing: 2px; color: var(--ck-accent, #0af); }
+.ck-modal pre {
   margin: 10px 0;
   padding: 8px;
   max-height: 40vh;
@@ -285,9 +285,9 @@ body[data-status="top"] #terminal {
   white-space: pre-wrap;
   word-break: break-all;
 }
-#pasteconfirm .why { font-size: 12px; opacity: 0.75; margin: 6px 0 10px; }
-#pasteconfirm .row { display: flex; gap: 10px; justify-content: flex-end; }
-#pasteconfirm button {
+.ck-modal .why { font-size: 12px; opacity: 0.75; margin: 6px 0 10px; }
+.ck-modal .row { display: flex; gap: 10px; justify-content: flex-end; }
+.ck-modal button {
   padding: 5px 16px;
   font: inherit;
   cursor: pointer;
@@ -295,5 +295,5 @@ body[data-status="top"] #terminal {
   color: inherit;
   border: 1px solid var(--ck-border, #2e5c39);
 }
-#pasteconfirm button:hover { background: color-mix(in srgb, var(--ck-accent, #0af) 45%, transparent); }
+.ck-modal button:hover { background: color-mix(in srgb, var(--ck-accent, #0af) 45%, transparent); }
 

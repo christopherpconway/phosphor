@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashSet;
 use std::process::Command;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
@@ -47,15 +48,42 @@ pub fn keep_disk(mount: &str) -> bool {
 
 /// Dedupe by mount point, order preserved (sysinfo can list a mount twice).
 pub fn dedupe_disks(disks: Vec<DiskInfo>) -> Vec<DiskInfo> {
-    let mut seen = std::collections::HashSet::new();
+    let mut seen = HashSet::new();
     disks.into_iter().filter(|d| seen.insert(d.mount.clone())).collect()
 }
 
-fn disk_infos(disks: &Disks) -> Vec<DiskInfo> {
+/// Mount points of attached disk images, parsed from `hdiutil info`: under
+/// each image's key/value block, every device is a tab-separated line of
+/// "<dev>\t<partition type>\t<mount point>" (mount point absent if unmounted).
+pub fn parse_hdiutil_mounts(out: &str) -> HashSet<String> {
+    out.lines()
+        .filter(|l| l.starts_with("/dev/"))
+        .filter_map(|l| l.split('\t').map(str::trim).find(|f| f.starts_with('/') && !f.starts_with("/dev/")))
+        .map(String::from)
+        .collect()
+}
+
+/// A mounted .dmg looks like an external volume to sysinfo; the widget is for
+/// real storage, so these are dropped.
+fn dmg_mounts() -> HashSet<String> {
+    if !cfg!(target_os = "macos") {
+        return HashSet::new();
+    }
+    Command::new("hdiutil")
+        .arg("info")
+        .output()
+        .map(|o| parse_hdiutil_mounts(&String::from_utf8_lossy(&o.stdout)))
+        .unwrap_or_default()
+}
+
+fn disk_infos(disks: &Disks, skip: &HashSet<String>) -> Vec<DiskInfo> {
     dedupe_disks(
         disks
             .iter()
-            .filter(|d| keep_disk(&d.mount_point().to_string_lossy()))
+            .filter(|d| {
+                let mount = d.mount_point().to_string_lossy();
+                keep_disk(&mount) && !skip.contains(mount.as_ref())
+            })
             .map(|d| DiskInfo {
                 name: d.name().to_string_lossy().into_owned(),
                 mount: d.mount_point().to_string_lossy().into_owned(),
@@ -375,6 +403,7 @@ pub fn stats_stream(channel: Channel<StatsPayload>) {
         let mut addrs = Networks::new_with_refreshed_list();
         let mut components = Components::new_with_refreshed_list();
         let mut disks = Disks::new_with_refreshed_list();
+        let mut dmgs = dmg_mounts();
         let mut tick: u32 = 0;
         let mut last_battery: Option<BatteryInfo> = battery();
         let mut last_ssid: Option<String> = wifi_ssid();
@@ -387,6 +416,7 @@ pub fn stats_stream(channel: Channel<StatsPayload>) {
                 sys.refresh_cpu_frequency();
                 // refresh_list also catches newly mounted external volumes
                 disks.refresh_list();
+                dmgs = dmg_mounts();
             }
             tick = tick.wrapping_add(1);
             sys.refresh_cpu_usage();
@@ -442,7 +472,7 @@ pub fn stats_stream(channel: Channel<StatsPayload>) {
                 ping_ms: PING_MS.load(Ordering::Relaxed).try_into().ok(),
                 task_count,
                 active_iface,
-                disks: disk_infos(&disks),
+                disks: disk_infos(&disks, &dmgs),
             };
             let mut subs = SUBSCRIBERS.lock().unwrap();
             subs.retain(|c| c.send(payload.clone()).is_ok());
@@ -545,6 +575,24 @@ mod tests {
         assert!(!keep_disk("/System/Volumes/Data"));
         assert!(!keep_disk("/System/Volumes/VM"));
         assert!(!keep_disk("/Volumes/com.apple.TimeMachine.localsnapshots"));
+    }
+
+    #[test]
+    fn hdiutil_mounts_parsed_from_device_lines() {
+        let out = "framework       : 704\ndriver          : 704\n\
+image-path      : /Users/me/Downloads/phosphor_0.8.4_universal.dmg\n\
+writeable       : false\n\
+/dev/disk4\t\tGUID_partition_scheme\t\n\
+/dev/disk4s1\t\tApple_HFS\t/Volumes/phosphor\n\
+================================================\n\
+image-path      : /Users/me/other.dmg\n\
+/dev/disk5\t\tApple_partition_scheme\t\n\
+/dev/disk5s2\t\tApple_HFS\t/Volumes/Other Disk\n";
+        let got = parse_hdiutil_mounts(out);
+        assert_eq!(got.len(), 2);
+        assert!(got.contains("/Volumes/phosphor"));
+        assert!(got.contains("/Volumes/Other Disk"));
+        assert!(parse_hdiutil_mounts("framework       : 704\n").is_empty());
     }
 
     #[test]

@@ -535,7 +535,14 @@ fn tray_update(app: AppHandle, state: State<TrayState>, win: String, items: Vec<
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let updater = tauri_plugin_updater::Builder::new();
+    // One universal .app ships per release; the default darwin-{arch} key
+    // would need two manifest entries pointing at the same file.
+    #[cfg(target_os = "macos")]
+    let updater = updater.target("darwin-universal");
     let builder = tauri::Builder::default()
+        .plugin(updater.build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .manage(PtyState::default())
         .manage(TrayState::default())
@@ -567,6 +574,7 @@ pub fn run() {
             use tauri::menu::{MenuBuilder, PredefinedMenuItem, SubmenuBuilder};
             let app_menu = SubmenuBuilder::new(app, "phosphor")
                 .about(None)
+                .text("check-updates", "Check for Updates…")
                 .separator()
                 .services()
                 .separator()
@@ -596,6 +604,11 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             let _ = window.set_as_windows_menu_for_nsapp();
             MenuBuilder::new(app).items(&[&app_menu, &edit, &window]).build()
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "check-updates" {
+                let _ = app.emit("check-updates", ());
+            }
         });
     builder
         .invoke_handler(tauri::generate_handler![

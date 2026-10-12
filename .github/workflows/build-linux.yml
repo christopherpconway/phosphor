@@ -46,6 +46,11 @@ jobs:
           workspaces: src-tauri
 
       - name: Build
+        env:
+          # Signs the AppImage for the in-app updater (.AppImage.sig); the
+          # matching public key is in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           npm ci
           npm run tauri build -- --bundles ${{ matrix.bundles }}
@@ -61,8 +66,12 @@ jobs:
           gh release upload "${{ inputs.release_tag }}" \
             src-tauri/target/release/bundle/rpm/*.rpm \
             src-tauri/target/release/bundle/deb/*.deb \
-            $(ls src-tauri/target/release/bundle/appimage/*.AppImage 2>/dev/null || true) \
+            $(ls src-tauri/target/release/bundle/appimage/*.AppImage* 2>/dev/null || true) \
             --clobber --repo "${{ github.repository }}"
+          # AppImage is the only Linux bundle that can self-update; x86_64 only.
+          for img in src-tauri/target/release/bundle/appimage/*.AppImage; do
+            [ -f "$img" ] && scripts/updater-manifest.sh "${{ inputs.release_tag }}" "linux-${{ matrix.arch }}" "$img"
+          done
 
       - uses: actions/upload-artifact@v4
         # Convenience copy only; a stale storage-quota snapshot must not fail

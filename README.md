@@ -28,6 +28,8 @@ Under the glow, Phosphor is a real terminal: a Rust backend runs your actual she
 
 **Linux (Fedora, Debian, and friends):** grab the `.rpm`, `.deb`, or AppImage from Releases. On Fedora: `sudo dnf install ./phosphor-*.rpm` (dependencies install automatically).
 
+**Updating:** the macOS app and the Linux AppImage check Releases on launch and offer to update in place (phosphor menu → Check for Updates… on macOS). rpm/deb installs update through the package manager.
+
 **Build from source:**
 
 ```
@@ -199,6 +201,8 @@ These aren't headline features, just care taken where terminals usually aren't c
 ## Linux builds
 
 Pushing to main triggers CI, which builds `.rpm` and `.deb` for x86_64 and aarch64 plus an x86_64 AppImage; tagged releases get the packages attached under Releases.
+
+Both CI workflows also sign the updater bundles (`.app.tar.gz` on macOS, `.AppImage` on Linux) with the key in the `TAURI_SIGNING_PRIVATE_KEY` secret and merge their entry into the release's `latest.json` via `scripts/updater-manifest.sh`; the in-app updater polls that file.
 
 The frontend is pinned to xterm.js 5.5 deliberately: the CRT pipeline captures the canvas renderer's layers as a WebGL texture, and xterm 6 removed the canvas renderer.
 

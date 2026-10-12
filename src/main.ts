@@ -68,11 +68,14 @@ import { findShortcut, swallowsKeypress } from "./shortcuts.ts";
 import { ShortcutsOverlay } from "./cockpit/shortcuts-overlay.ts";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { parseWindowParams, nextWindowLabel, labelForConfig } from "./win.ts";
+import { initUpdater } from "./update.ts";
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
 import "./cockpit/cockpit.css";
 
 const WIN = parseWindowParams(location.search);
+// One prompt per app, not one per window.
+if (WIN.win === "main") initUpdater();
 /** PTY ids are global in the Rust map; offset per window so pane 1 here never kills pane 1 there. */
 const ptyId = (id: number) => WIN.base + id;
 const wsArgs = () => (WIN.win === "main" ? {} : { name: WIN.win });
@@ -870,7 +873,7 @@ function saveSnippets() {
 
 const pasteConfirmEl = document.createElement("div");
 pasteConfirmEl.id = "pasteconfirm";
-pasteConfirmEl.classList.add("hidden");
+pasteConfirmEl.classList.add("ck-modal", "hidden");
 document.body.append(pasteConfirmEl);
 
 function openPasteConfirm(pane: Pane, text: string) {

@@ -32,6 +32,11 @@ jobs:
           workspaces: src-tauri
 
       - name: Build
+        env:
+          # Signs the updater bundle (.app.tar.gz.sig); the matching public
+          # key is in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           npm ci
           npm run tauri build -- --target universal-apple-darwin
@@ -46,7 +51,11 @@ jobs:
         run: |
           gh release upload "${{ inputs.release_tag }}" \
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg \
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz \
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig \
             --clobber --repo "${{ github.repository }}"
+          scripts/updater-manifest.sh "${{ inputs.release_tag }}" darwin-universal \
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
 
       - uses: actions/upload-artifact@v4
         # Convenience copy only; a stale storage-quota snapshot must not fail
