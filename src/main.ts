@@ -2040,7 +2040,18 @@ async function boot() {
 
   // While the GPU context is gone, show the xterm canvases directly so text
   // never vanishes; the CRT pipeline takes back over once it is rebuilt.
-  crt.onContextChange = (ok) => termContainer.classList.toggle("raw", !ok);
+  crt.onContextChange = (ok) => {
+    termContainer.classList.toggle("raw", !ok);
+    // A real GPU-process restart (2026-10-23) also wipes xterm's own 2D layer
+    // canvases and glyph atlas; xterm thinks its rows are clean and never
+    // repaints, so the rebuilt CRT composites blank panes until a resize.
+    if (ok) {
+      for (const p of panes.values()) {
+        p.term.clearTextureAtlas();
+        p.term.refresh(0, p.term.rows - 1);
+      }
+    }
+  };
   if (!crt.start()) {
     termContainer.classList.add("raw");
   }
