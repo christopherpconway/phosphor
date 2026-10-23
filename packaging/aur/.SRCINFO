@@ -1,6 +1,6 @@
 pkgbase = phosphor-bin
 	pkgdesc = A CRT terminal with a cockpit
-	pkgver = 0.9.0
+	pkgver = 0.9.1
 	pkgrel = 1
 	url = https://github.com/christopherpconway/phosphor
 	arch = x86_64
@@ -11,11 +11,11 @@ pkgbase = phosphor-bin
 	depends = libayatana-appindicator
 	provides = phosphor
 	conflicts = phosphor
-	source = LICENSE-0.9.0::https://raw.githubusercontent.com/christopherpconway/phosphor/v0.9.0/LICENSE
+	source = LICENSE-0.9.1::https://raw.githubusercontent.com/christopherpconway/phosphor/v0.9.1/LICENSE
 	sha256sums = e65d29ddf8d2571aab5f041d17cd18de06c92eb8a9401fe29d61ced9a208b1c4
-	source_x86_64 = https://github.com/christopherpconway/phosphor/releases/download/v0.9.0/phosphor_0.9.0_amd64.deb
-	sha256sums_x86_64 = 932618e5ea674c65ba641b94ae9c18b46a6431c3f6842324d85d4b66dd4b75db
-	source_aarch64 = https://github.com/christopherpconway/phosphor/releases/download/v0.9.0/phosphor_0.9.0_arm64.deb
-	sha256sums_aarch64 = 79242fede90893c5cc2252a6541ba4a673e8afb17cfc2d9f649288271b632c0f
+	source_x86_64 = https://github.com/christopherpconway/phosphor/releases/download/v0.9.1/phosphor_0.9.1_amd64.deb
+	sha256sums_x86_64 = 6697e4a5266efb999a06b21356532d9514f89b12fb3d661e7dec0790c65e8c63
+	source_aarch64 = https://github.com/christopherpconway/phosphor/releases/download/v0.9.1/phosphor_0.9.1_arm64.deb
+	sha256sums_aarch64 = 66f46425a3f62ecfa9c385a841f020ea2c6a0dc09438e09819f8e452147cefb5
 
 pkgname = phosphor-bin
